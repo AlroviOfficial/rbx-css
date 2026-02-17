@@ -1,0 +1,20 @@
+:root {
+  --bg: #ffffff;
+  --text: #1a1a2e;
+}
+
+[data-theme="dark"] {
+  --bg: #1a1a2e;
+  --text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --accent: #ff0099;
+  }
+}
+
+.card {
+  background-color: var(--bg);
+  color: var(--text);
+}

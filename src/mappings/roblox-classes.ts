@@ -1,0 +1,18 @@
+export const ROBLOX_GUI_CLASSES = new Set([
+  "Frame",
+  "ScrollingFrame",
+  "TextLabel",
+  "TextButton",
+  "TextBox",
+  "ImageLabel",
+  "ImageButton",
+  "ViewportFrame",
+  "VideoFrame",
+  "CanvasGroup",
+  "BillboardGui",
+  "SurfaceGui",
+  "ScreenGui",
+  "GuiButton",
+  "GuiObject",
+  "LayerCollector",
+]);

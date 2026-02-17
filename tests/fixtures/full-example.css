@@ -1,0 +1,46 @@
+:root {
+  --bg: #1a1a2e;
+  --text: #e1e1e1;
+  --primary: #335fff;
+  --radius: 8px;
+  --gap: 12px;
+}
+
+div {
+  background-color: var(--bg);
+}
+
+.card {
+  background-color: var(--bg);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+}
+
+.card:hover {
+  background-color: #2a2a4e;
+}
+
+.card > span {
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  font-family: "GothamSSm";
+}
+
+button.primary {
+  background-color: var(--primary);
+  color: white;
+  font-size: 16px;
+  border-radius: 6px;
+  padding: 8px 24px;
+  width: auto;
+  height: auto;
+}
+
+button.primary:hover {
+  background-color: #4470ff;
+}

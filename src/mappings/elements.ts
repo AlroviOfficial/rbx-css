@@ -1,0 +1,16 @@
+export const HTML_TO_ROBLOX: Record<string, string> = {
+  div: "Frame",
+  span: "TextLabel",
+  p: "TextLabel",
+  h1: "TextLabel",
+  h2: "TextLabel",
+  h3: "TextLabel",
+  h4: "TextLabel",
+  h5: "TextLabel",
+  h6: "TextLabel",
+  button: "TextButton",
+  input: "TextBox",
+  img: "ImageLabel",
+  a: "TextButton",
+  canvas: "ViewportFrame",
+};
