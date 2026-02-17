@@ -248,7 +248,10 @@ function mapSingleDeclaration(
     }
 
     case "border-color": {
-      const result = convertCssColor(value);
+      // lightningcss gives {top: color, right: color, ...} for border-color shorthand
+      const v = value as Record<string, unknown>;
+      const colorVal = v.top ?? value;
+      const result = convertCssColor(colorVal);
       if (result) acc.borderColor = result.color;
       break;
     }
@@ -325,8 +328,10 @@ function mapSingleDeclaration(
     }
 
     case "vertical-align": {
-      const v = value as string;
-      props.set("TextYAlignment", mapTextYAlignment(v));
+      const v = value as Record<string, unknown>;
+      const align =
+        typeof v === "string" ? v : v.type === "keyword" ? (v.value as string) : "top";
+      props.set("TextYAlignment", mapTextYAlignment(align));
       break;
     }
 
@@ -725,7 +730,8 @@ function handleLinearGradient(
 }
 
 function extractGradientPosition(pos: Record<string, unknown>): number {
-  if (pos.type === "percentage") return (pos.value as number) / 100;
+  // lightningcss gives percentages as 0-1 (e.g. 100% = 1)
+  if (pos.type === "percentage") return pos.value as number;
   return 0;
 }
 
@@ -771,6 +777,11 @@ function resolveAnchorAxis(axis: Record<string, unknown>): number | null {
   if (axis.type === "center") return 0.5;
   if (axis.type === "left" || axis.type === "top") return 0;
   if (axis.type === "right" || axis.type === "bottom") return 1;
+  if (axis.type === "side") {
+    const side = axis.side as string;
+    if (side === "left" || side === "top") return 0;
+    if (side === "right" || side === "bottom") return 1;
+  }
   if (axis.type === "length") {
     const v = axis.value as Record<string, unknown>;
     if (v.type === "percentage") return (v.value as number) / 100;

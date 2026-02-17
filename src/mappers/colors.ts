@@ -15,7 +15,8 @@ export function convertCssColor(cssColor: unknown): ColorResult | null {
     const alpha = c.alpha as number;
     return {
       color: [r, g, b],
-      transparency: alpha < 1 ? 1 - alpha : undefined,
+      transparency:
+        alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
     };
   }
 
