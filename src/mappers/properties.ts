@@ -254,6 +254,40 @@ function mapSingleDeclaration(
       break;
     }
 
+    case "padding-inline": {
+      // Logical property: left + right (LTR assumed for Roblox)
+      // Value is {inlineStart: {type, value}, inlineEnd: {type, value}}
+      const pi = value as Record<string, unknown>;
+      handlePaddingSide("padding-left", pi.inlineStart, acc, warnings);
+      handlePaddingSide("padding-right", pi.inlineEnd, acc, warnings);
+      break;
+    }
+
+    case "padding-block": {
+      // Logical property: top + bottom
+      // Value is {blockStart: {type, value}, blockEnd: {type, value}}
+      const pb = value as Record<string, unknown>;
+      handlePaddingSide("padding-top", pb.blockStart, acc, warnings);
+      handlePaddingSide("padding-bottom", pb.blockEnd, acc, warnings);
+      break;
+    }
+
+    case "padding-inline-start":
+    case "padding-inline-end": {
+      // Map logical to physical: start→left, end→right (LTR)
+      const physicalProp = property === "padding-inline-start" ? "padding-left" : "padding-right";
+      handlePaddingSide(physicalProp, value, acc, warnings);
+      break;
+    }
+
+    case "padding-block-start":
+    case "padding-block-end": {
+      // Map logical to physical: start→top, end→bottom
+      const physicalProp = property === "padding-block-start" ? "padding-top" : "padding-bottom";
+      handlePaddingSide(physicalProp, value, acc, warnings);
+      break;
+    }
+
     case "border": {
       handleBorder(value as Record<string, unknown>, acc, warnings);
       break;
@@ -1525,7 +1559,8 @@ function finalizeAccumulator(
     acc.justifyContent !== undefined ||
     acc.alignItems !== undefined ||
     acc.flexDirection !== undefined ||
-    acc.flexWrap !== undefined;
+    acc.flexWrap !== undefined ||
+    acc.gap !== undefined;
   if (acc.hasFlex || hasFlexProperties) {
     const layoutProps = new Map<string, RobloxValue>();
     if (acc.hasFlex || acc.flexDirection) {
