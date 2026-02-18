@@ -22,6 +22,12 @@ export function convertLengthDimension(
     switch (unit) {
       case "px":
         return { scale: 0, offset: value };
+      case "rem":
+        return { scale: 0, offset: value * 16 };
+      case "em":
+        // em is parent-relative in CSS; Roblox has no cascading font-size,
+        // so we approximate using the root base of 16px (same as rem).
+        return { scale: 0, offset: value * 16 };
       case "vw":
       case "vh":
         return { scale: value / 100, offset: 0 };
@@ -66,6 +72,11 @@ export function convertLengthValue(
   switch (unit) {
     case "px":
       return { scale: 0, offset: value };
+    case "rem":
+      return { scale: 0, offset: value * 16 };
+    case "em":
+      // em is parent-relative in CSS; approximated as rem (base 16px).
+      return { scale: 0, offset: value * 16 };
     case "vw":
     case "vh":
       return { scale: value / 100, offset: 0 };

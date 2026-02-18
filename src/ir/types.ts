@@ -26,8 +26,10 @@ export type PseudoInstanceType =
   | "UIStroke"
   | "UIPadding"
   | "UIListLayout"
+  | "UIGridLayout"
   | "UIGradient"
   | "UIFlexItem"
+  | "UIScale"
   | "UIAspectRatioConstraint"
   | "UISizeConstraint";
 

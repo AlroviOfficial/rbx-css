@@ -165,11 +165,14 @@ describe("flex-grow/shrink -> UIFlexItem", () => {
   });
 });
 
-describe("display: flex without display", () => {
-  test("flex-direction alone does NOT create UIListLayout (needs display: flex)", () => {
+describe("flex properties without display: flex", () => {
+  test("flex-direction alone creates UIListLayout (utility-first CSS support)", () => {
     const result = compileCss(`.a { flex-direction: column; }`);
     const layoutRule = result.ir.rules.find(r => r.selector.includes("UIListLayout"));
-    expect(layoutRule).toBeUndefined();
+    expect(layoutRule).toBeDefined();
+    expect(layoutRule!.properties.get("FillDirection")).toEqual({
+      type: "Enum", enum: "FillDirection", value: "Vertical",
+    });
   });
 });
 
@@ -185,6 +188,117 @@ describe("combined justify + align", () => {
     });
     expect(rule!.properties.get("VerticalAlignment")).toEqual({
       type: "Enum", enum: "VerticalAlignment", value: "Bottom",
+    });
+  });
+});
+
+describe("justify-content: space-* distribution", () => {
+  test("space-between -> HorizontalFlex SpaceBetween (row)", () => {
+    const rule = getLayout(`.a { display: flex; justify-content: space-between; }`);
+    expect(rule!.properties.get("HorizontalFlex")).toEqual({
+      type: "Enum", enum: "UIFlexAlignment", value: "SpaceBetween",
+    });
+  });
+
+  test("space-around -> HorizontalFlex SpaceAround (row)", () => {
+    const rule = getLayout(`.a { display: flex; justify-content: space-around; }`);
+    expect(rule!.properties.get("HorizontalFlex")).toEqual({
+      type: "Enum", enum: "UIFlexAlignment", value: "SpaceAround",
+    });
+  });
+
+  test("space-evenly -> HorizontalFlex SpaceEvenly (row)", () => {
+    const rule = getLayout(`.a { display: flex; justify-content: space-evenly; }`);
+    expect(rule!.properties.get("HorizontalFlex")).toEqual({
+      type: "Enum", enum: "UIFlexAlignment", value: "SpaceEvenly",
+    });
+  });
+
+  test("space-between column -> VerticalFlex SpaceBetween", () => {
+    const rule = getLayout(`.a { display: flex; flex-direction: column; justify-content: space-between; }`);
+    expect(rule!.properties.get("VerticalFlex")).toEqual({
+      type: "Enum", enum: "UIFlexAlignment", value: "SpaceBetween",
+    });
+  });
+});
+
+describe("align-items: stretch", () => {
+  test("stretch -> ItemLineAlignment Stretch", () => {
+    const rule = getLayout(`.a { display: flex; align-items: stretch; }`);
+    expect(rule!.properties.get("ItemLineAlignment")).toEqual({
+      type: "Enum", enum: "ItemLineAlignment", value: "Stretch",
+    });
+  });
+});
+
+describe("align-self -> UIFlexItem", () => {
+  test("align-self: center", () => {
+    const result = compileCss(`.a { align-self: center; }`);
+    const flexItem = result.ir.rules.find(r => r.selector.includes("UIFlexItem"));
+    expect(flexItem).toBeDefined();
+    expect(flexItem!.properties.get("ItemLineAlignment")).toEqual({
+      type: "Enum", enum: "ItemLineAlignment", value: "Center",
+    });
+  });
+
+  test("align-self: stretch", () => {
+    const result = compileCss(`.a { align-self: stretch; }`);
+    const flexItem = result.ir.rules.find(r => r.selector.includes("UIFlexItem"));
+    expect(flexItem).toBeDefined();
+    expect(flexItem!.properties.get("ItemLineAlignment")).toEqual({
+      type: "Enum", enum: "ItemLineAlignment", value: "Stretch",
+    });
+  });
+
+  test("align-self combined with flex-grow", () => {
+    const result = compileCss(`.a { flex-grow: 1; align-self: end; }`);
+    const flexItem = result.ir.rules.find(r => r.selector.includes("UIFlexItem"));
+    expect(flexItem).toBeDefined();
+    expect(flexItem!.properties.get("GrowRatio")).toEqual({ type: "number", value: 1 });
+    expect(flexItem!.properties.get("ItemLineAlignment")).toEqual({
+      type: "Enum", enum: "ItemLineAlignment", value: "End",
+    });
+  });
+});
+
+describe("order -> LayoutOrder", () => {
+  test("order: 2 maps to LayoutOrder", () => {
+    const result = compileCss(`.a { order: 2; }`);
+    const rule = result.ir.rules[0];
+    expect(rule).toBeDefined();
+    expect(rule!.properties.get("LayoutOrder")).toEqual({ type: "number", value: 2 });
+  });
+
+  test("order: -1 maps to negative LayoutOrder", () => {
+    const result = compileCss(`.a { order: -1; }`);
+    const rule = result.ir.rules[0];
+    expect(rule!.properties.get("LayoutOrder")).toEqual({ type: "number", value: -1 });
+  });
+});
+
+describe("flex-basis -> Size", () => {
+  test("flex-basis: 200px sets width (default row)", () => {
+    const result = compileCss(`.a { flex-basis: 200px; }`);
+    const rule = result.ir.rules[0];
+    expect(rule).toBeDefined();
+    expect(rule!.properties.get("Size")).toEqual({
+      type: "UDim2", value: [0, 200, 0, 0],
+    });
+  });
+
+  test("flex-basis: 100px with column direction sets height", () => {
+    const result = compileCss(`.a { flex-direction: column; flex-basis: 100px; }`);
+    const rule = result.ir.rules[0];
+    expect(rule!.properties.get("Size")).toEqual({
+      type: "UDim2", value: [0, 0, 0, 100],
+    });
+  });
+
+  test("explicit width overrides flex-basis", () => {
+    const result = compileCss(`.a { width: 300px; flex-basis: 200px; }`);
+    const rule = result.ir.rules[0];
+    expect(rule!.properties.get("Size")).toEqual({
+      type: "UDim2", value: [0, 300, 0, 0],
     });
   });
 });

@@ -195,3 +195,87 @@ describe("transform-origin", () => {
     expect(anchor).toEqual({ type: "Vector2", value: [0, 0] });
   });
 });
+
+describe("rem units", () => {
+  test("width in rem converts to px (1rem = 16px)", () => {
+    const result = compileCss(`.a { width: 10rem; }`);
+    const size = result.ir.rules[0]!.properties.get("Size");
+    expect(size).toEqual({ type: "UDim2", value: [0, 160, 0, 0] });
+  });
+
+  test("height in rem converts to px", () => {
+    const result = compileCss(`.a { height: 2.5rem; }`);
+    const size = result.ir.rules[0]!.properties.get("Size");
+    expect(size).toEqual({ type: "UDim2", value: [0, 0, 0, 40] });
+  });
+
+  test("padding in rem", () => {
+    const result = compileCss(`.a { padding: 1rem; }`);
+    const rule = result.ir.rules.find(r => r.selector.includes("UIPadding"));
+    expect(rule).toBeDefined();
+    expect(rule!.properties.get("PaddingTop")).toEqual({
+      type: "UDim", value: [0, 16],
+    });
+  });
+
+  test("gap in rem", () => {
+    const result = compileCss(`.a { display: flex; gap: 0.5rem; }`);
+    const rule = result.ir.rules.find(r => r.selector.includes("UIListLayout"));
+    expect(rule!.properties.get("Padding")).toEqual({
+      type: "UDim", value: [0, 8],
+    });
+  });
+
+  test("border-radius in rem", () => {
+    const result = compileCss(`.a { border-radius: 0.5rem; }`);
+    const rule = result.ir.rules.find(r => r.selector.includes("UICorner"));
+    expect(rule!.properties.get("CornerRadius")).toEqual({
+      type: "UDim", value: [0, 8],
+    });
+  });
+});
+
+describe("em units", () => {
+  test("em converts same as rem (base 16)", () => {
+    const result = compileCss(`.a { width: 5em; }`);
+    const size = result.ir.rules[0]!.properties.get("Size");
+    expect(size).toEqual({ type: "UDim2", value: [0, 80, 0, 0] });
+  });
+});
+
+describe("font-size with rem/em", () => {
+  test("font-size in rem converts to px", () => {
+    const result = compileCss(`.a { font-size: 0.875rem; }`);
+    const textSize = result.ir.rules[0]!.properties.get("TextSize");
+    expect(textSize).toEqual({ type: "number", value: 14 });
+  });
+
+  test("font-size in em converts to px", () => {
+    const result = compileCss(`.a { font-size: 1.5em; }`);
+    const textSize = result.ir.rules[0]!.properties.get("TextSize");
+    expect(textSize).toEqual({ type: "number", value: 24 });
+  });
+});
+
+describe("size constraints with rem", () => {
+  test("min-width in rem converts to px", () => {
+    const result = compileCss(`.a { min-width: 6.25rem; }`);
+    const rule = result.ir.rules.find(r => r.selector.includes("UISizeConstraint"));
+    expect(rule).toBeDefined();
+    expect(rule!.properties.get("MinSize")).toEqual({
+      type: "Vector2", value: [100, 0],
+    });
+  });
+
+  test("max-width in rem converts to px", () => {
+    const result = compileCss(`.a { max-width: 28rem; }`);
+    const rule = result.ir.rules.find(r => r.selector.includes("UISizeConstraint"));
+    expect(rule).toBeDefined();
+    const maxSize = rule!.properties.get("MaxSize");
+    expect(maxSize!.type).toBe("Vector2");
+    if (maxSize!.type === "Vector2") {
+      expect(maxSize!.value[0]).toBe(448);
+      expect(maxSize!.value[1]).toBe(Infinity);
+    }
+  });
+});

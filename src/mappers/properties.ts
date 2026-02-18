@@ -51,6 +51,16 @@ interface Accumulator {
     position: number;
     color: [number, number, number];
   }>;
+  scale?: number;
+  rotation?: number;
+  alignSelf?: string;
+  flexBasis?: UDimResult;
+  hasGrid?: boolean;
+  gridMaxCellsPerRow?: number;
+  gridCellWidth?: UDimResult;
+  gridCellHeight?: UDimResult;
+  gridGapX?: RobloxValue;
+  gridGapY?: RobloxValue;
 }
 
 export function mapDeclarations(
@@ -58,7 +68,7 @@ export function mapDeclarations(
   warnings: WarningCollector,
 ): PropertyMapResult {
   const props = new Map<string, RobloxValue>();
-  const acc: Accumulator = { hasFlex: false };
+  const acc: Accumulator = { hasFlex: false, hasGrid: false };
 
   for (const decl of declarations) {
     mapSingleDeclaration(decl as Record<string, unknown>, props, acc, warnings);
@@ -189,6 +199,7 @@ function mapSingleDeclaration(
     case "gap": {
       const v = value as Record<string, unknown>;
       const row = v.row as Record<string, unknown>;
+      const column = v.column as Record<string, unknown>;
       if (row?.type === "length-percentage") {
         const result = convertLengthDimension(
           row.value as Record<string, unknown>,
@@ -196,7 +207,20 @@ function mapSingleDeclaration(
         );
         if (result && result !== "auto") {
           acc.gap = toUDim(result);
+          acc.gridGapY = toUDim(result);
         }
+      }
+      if (column?.type === "length-percentage") {
+        const result = convertLengthDimension(
+          column.value as Record<string, unknown>,
+          warnings,
+        );
+        if (result && result !== "auto") {
+          acc.gridGapX = toUDim(result);
+        }
+      } else if (acc.gridGapY) {
+        // If only row gap specified, use same for column
+        acc.gridGapX = acc.gridGapY;
       }
       break;
     }
@@ -288,6 +312,11 @@ function mapSingleDeclaration(
             props.set("TextSize", {
               type: "number",
               value: dim.value as number,
+            });
+          } else if (dim.unit === "rem" || dim.unit === "em") {
+            props.set("TextSize", {
+              type: "number",
+              value: (dim.value as number) * 16,
             });
           }
         }
@@ -468,6 +497,62 @@ function mapSingleDeclaration(
       break;
     }
 
+    case "transform": {
+      handleTransform(value as unknown[], acc, warnings);
+      break;
+    }
+
+    case "order": {
+      const v = value as number;
+      if (typeof v === "number") {
+        props.set("LayoutOrder", { type: "number", value: v });
+      }
+      break;
+    }
+
+    case "align-self": {
+      const v = value as Record<string, unknown>;
+      acc.alignSelf = extractItemsAlignment(v);
+      break;
+    }
+
+    case "flex-basis": {
+      const v = value as Record<string, unknown>;
+      if (v.type === "length-percentage") {
+        const result = convertLengthDimension(v.value, warnings);
+        if (result && result !== "auto") {
+          acc.flexBasis = result;
+        }
+      }
+      break;
+    }
+
+    case "grid-template-columns": {
+      acc.hasGrid = true;
+      handleGridTemplateColumns(value, acc, warnings);
+      break;
+    }
+
+    case "grid-template-rows": {
+      acc.hasGrid = true;
+      handleGridTemplateRows(value, acc, warnings);
+      break;
+    }
+
+    case "margin":
+    case "margin-top":
+    case "margin-right":
+    case "margin-bottom":
+    case "margin-left":
+    case "margin-block":
+    case "margin-inline":
+      // Roblox has no margin concept - use gap on parent UIListLayout instead
+      warnings.warn({
+        code: "unsupported-property",
+        message: `'${property}' has no Roblox equivalent (use 'gap' on parent flex container instead) - skipped`,
+      });
+      break;
+
     default:
       warnings.warn({
         code: "unsupported-property",
@@ -492,6 +577,8 @@ function handleDisplay(
     const inside = v.inside as Record<string, unknown>;
     if (inside?.type === "flex") {
       acc.hasFlex = true;
+    } else if (inside?.type === "grid") {
+      acc.hasGrid = true;
     }
   }
 }
@@ -636,6 +723,11 @@ function handleBorderRadius(
       acc.borderRadius = {
         type: "UDim",
         value: [0, dim.value as number],
+      };
+    } else if (dim.unit === "rem" || dim.unit === "em") {
+      acc.borderRadius = {
+        type: "UDim",
+        value: [0, (dim.value as number) * 16],
       };
     }
   } else if (first.type === "percentage") {
@@ -961,6 +1053,7 @@ function extractPxFromLengthPercentage(
     if (inner.type === "dimension") {
       const dim = inner.value as Record<string, unknown>;
       if (dim.unit === "px") return dim.value as number;
+      if (dim.unit === "rem" || dim.unit === "em") return (dim.value as number) * 16;
     }
   }
   return null;
@@ -983,6 +1076,167 @@ function extractItemsAlignment(v: Record<string, unknown>): string {
   if (v.type === "self-position") return v.value as string;
   if (v.type === "keyword") return v.value as string;
   return "stretch";
+}
+
+function handleTransform(
+  transforms: unknown[],
+  acc: Accumulator,
+  warnings: WarningCollector,
+): void {
+  if (!Array.isArray(transforms)) return;
+  for (const t of transforms) {
+    const tf = t as Record<string, unknown>;
+    switch (tf.type) {
+      case "scale": {
+        const vals = tf.value as Array<Record<string, unknown>>;
+        if (vals && vals.length >= 1) {
+          const x = vals[0].value as number;
+          const y = vals.length >= 2 ? (vals[1].value as number) : x;
+          // Use average for uniform UIScale (Roblox UIScale is uniform)
+          acc.scale = x === y ? x : (x + y) / 2;
+        }
+        break;
+      }
+      case "scaleX":
+      case "scaleY": {
+        const v = tf.value as Record<string, unknown>;
+        acc.scale = v.value as number;
+        break;
+      }
+      case "rotate": {
+        const v = tf.value as Record<string, unknown>;
+        if (v.type === "deg") {
+          acc.rotation = v.value as number;
+        } else if (v.type === "rad") {
+          acc.rotation = (v.value as number) * (180 / Math.PI);
+        } else if (v.type === "turn") {
+          acc.rotation = (v.value as number) * 360;
+        }
+        break;
+      }
+      default:
+        warnings.warn({
+          code: "unsupported-property",
+          message: `transform function '${tf.type}' has no Roblox equivalent - skipped`,
+        });
+    }
+  }
+}
+
+function extractTrackSize(
+  trackBreadth: Record<string, unknown>,
+  warnings: WarningCollector,
+): UDimResult | null {
+  // track-breadth -> length -> dimension
+  if (trackBreadth.type === "length") {
+    const dim = trackBreadth.value as Record<string, unknown>;
+    if (dim.type === "dimension") {
+      const val = dim.value as Record<string, unknown>;
+      const unit = val.unit as string;
+      const value = val.value as number;
+      switch (unit) {
+        case "px":
+          return { scale: 0, offset: value };
+        case "rem":
+          return { scale: 0, offset: value * 16 };
+        default:
+          return null;
+      }
+    }
+  }
+  // flex (1fr) - no fixed size, skip
+  return null;
+}
+
+function handleGridTemplateColumns(
+  value: unknown,
+  acc: Accumulator,
+  warnings: WarningCollector,
+): void {
+  const v = value as Record<string, unknown>;
+  if (v.type !== "track-list") return;
+
+  const items = v.items as unknown[];
+  if (!Array.isArray(items)) return;
+
+  for (const item of items) {
+    const t = item as Record<string, unknown>;
+    if (t.type === "track-repeat") {
+      // repeat(N, size) pattern
+      const repeat = t.value as Record<string, unknown>;
+      const count = repeat?.count as Record<string, unknown>;
+      if (count?.type === "number") {
+        acc.gridMaxCellsPerRow = count.value as number;
+      }
+      const trackSizes = repeat?.trackSizes as unknown[];
+      if (trackSizes && trackSizes.length > 0) {
+        const first = trackSizes[0] as Record<string, unknown>;
+        if (first.type === "track-breadth") {
+          const size = extractTrackSize(
+            first.value as Record<string, unknown>,
+            warnings,
+          );
+          if (size) acc.gridCellWidth = size;
+        }
+      }
+    } else if (t.type === "track-size") {
+      // Explicit column size - count them for FillDirectionMaxCells
+      if (!acc.gridMaxCellsPerRow) acc.gridMaxCellsPerRow = 0;
+      acc.gridMaxCellsPerRow++;
+      if (acc.gridMaxCellsPerRow === 1) {
+        const breadth = t.value as Record<string, unknown>;
+        if (breadth.type === "track-breadth") {
+          const size = extractTrackSize(
+            breadth.value as Record<string, unknown>,
+            warnings,
+          );
+          if (size) acc.gridCellWidth = size;
+        }
+      }
+    }
+  }
+}
+
+function handleGridTemplateRows(
+  value: unknown,
+  acc: Accumulator,
+  warnings: WarningCollector,
+): void {
+  const v = value as Record<string, unknown>;
+  if (v.type !== "track-list") return;
+
+  const items = v.items as unknown[];
+  if (!Array.isArray(items)) return;
+
+  for (const item of items) {
+    const t = item as Record<string, unknown>;
+    if (t.type === "track-repeat") {
+      const repeat = t.value as Record<string, unknown>;
+      const trackSizes = repeat?.trackSizes as unknown[];
+      if (trackSizes && trackSizes.length > 0) {
+        const first = trackSizes[0] as Record<string, unknown>;
+        if (first.type === "track-breadth") {
+          const size = extractTrackSize(
+            first.value as Record<string, unknown>,
+            warnings,
+          );
+          if (size) acc.gridCellHeight = size;
+        }
+      }
+    } else if (t.type === "track-size") {
+      const breadth = t.value as Record<string, unknown>;
+      if (breadth.type === "track-breadth") {
+        const size = extractTrackSize(
+          breadth.value as Record<string, unknown>,
+          warnings,
+        );
+        if (size) {
+          acc.gridCellHeight = size;
+          break; // Only need first row height for uniform grid
+        }
+      }
+    }
+  }
 }
 
 function mapFillDirection(direction: string): RobloxValue {
@@ -1032,6 +1286,21 @@ function mapJustifyContent(
           value: isHorizontal ? "Right" : "Bottom",
         },
       };
+    case "space-between":
+      return {
+        prop: isHorizontal ? "HorizontalFlex" : "VerticalFlex",
+        value: { type: "Enum", enum: "UIFlexAlignment", value: "SpaceBetween" },
+      };
+    case "space-around":
+      return {
+        prop: isHorizontal ? "HorizontalFlex" : "VerticalFlex",
+        value: { type: "Enum", enum: "UIFlexAlignment", value: "SpaceAround" },
+      };
+    case "space-evenly":
+      return {
+        prop: isHorizontal ? "HorizontalFlex" : "VerticalFlex",
+        value: { type: "Enum", enum: "UIFlexAlignment", value: "SpaceEvenly" },
+      };
     default:
       return null;
   }
@@ -1078,6 +1347,30 @@ function mapAlignItems(
           value: isHorizontal ? "Bottom" : "Right",
         },
       };
+    case "stretch":
+      return {
+        prop: "ItemLineAlignment",
+        value: { type: "Enum", enum: "ItemLineAlignment", value: "Stretch" },
+      };
+    default:
+      return null;
+  }
+}
+
+function mapAlignSelf(
+  alignSelf: string,
+): RobloxValue | null {
+  switch (alignSelf) {
+    case "flex-start":
+    case "start":
+      return { type: "Enum", enum: "ItemLineAlignment", value: "Start" };
+    case "center":
+      return { type: "Enum", enum: "ItemLineAlignment", value: "Center" };
+    case "flex-end":
+    case "end":
+      return { type: "Enum", enum: "ItemLineAlignment", value: "End" };
+    case "stretch":
+      return { type: "Enum", enum: "ItemLineAlignment", value: "Stretch" };
     default:
       return null;
   }
@@ -1089,6 +1382,21 @@ function finalizeAccumulator(
   warnings: WarningCollector,
 ): PseudoInstanceIR[] {
   const pseudos: PseudoInstanceIR[] = [];
+
+  // Flex basis -> Size in flex direction (must happen before Size finalization)
+  // Note: flex-basis is set on the child, display:flex on the parent,
+  // so we don't require hasFlex here. Default to width (row direction).
+  if (acc.flexBasis) {
+    const isRow =
+      !acc.flexDirection ||
+      acc.flexDirection === "row" ||
+      acc.flexDirection === "row-reverse";
+    if (isRow && acc.widthX === undefined) {
+      acc.widthX = acc.flexBasis;
+    } else if (!isRow && acc.heightY === undefined) {
+      acc.heightY = acc.flexBasis;
+    }
+  }
 
   // Size (width + height -> UDim2 or AutomaticSize)
   if (acc.widthX !== undefined || acc.heightY !== undefined) {
@@ -1211,12 +1519,21 @@ function finalizeAccumulator(
   }
 
   // Flex -> ::UIListLayout
-  if (acc.hasFlex) {
+  // Generate UIListLayout if display:flex is set, OR if any flex layout
+  // properties are set individually (for utility-first CSS like Tailwind)
+  const hasFlexProperties =
+    acc.justifyContent !== undefined ||
+    acc.alignItems !== undefined ||
+    acc.flexDirection !== undefined ||
+    acc.flexWrap !== undefined;
+  if (acc.hasFlex || hasFlexProperties) {
     const layoutProps = new Map<string, RobloxValue>();
-    layoutProps.set(
-      "FillDirection",
-      mapFillDirection(acc.flexDirection ?? "row"),
-    );
+    if (acc.hasFlex || acc.flexDirection) {
+      layoutProps.set(
+        "FillDirection",
+        mapFillDirection(acc.flexDirection ?? "row"),
+      );
+    }
     if (acc.justifyContent) {
       const alignment = mapJustifyContent(
         acc.justifyContent,
@@ -1236,24 +1553,34 @@ function finalizeAccumulator(
   }
 
   // Flex item -> ::UIFlexItem
-  if (acc.flexGrow !== undefined || acc.flexShrink !== undefined) {
+  if (
+    acc.flexGrow !== undefined ||
+    acc.flexShrink !== undefined ||
+    acc.alignSelf !== undefined
+  ) {
     const flexProps = new Map<string, RobloxValue>();
-    flexProps.set("FlexMode", {
-      type: "Enum",
-      enum: "UIFlexMode",
-      value: "Custom",
-    });
-    if (acc.flexGrow !== undefined) {
-      flexProps.set("GrowRatio", {
-        type: "number",
-        value: acc.flexGrow,
+    if (acc.flexGrow !== undefined || acc.flexShrink !== undefined) {
+      flexProps.set("FlexMode", {
+        type: "Enum",
+        enum: "UIFlexMode",
+        value: "Custom",
       });
+      if (acc.flexGrow !== undefined) {
+        flexProps.set("GrowRatio", {
+          type: "number",
+          value: acc.flexGrow,
+        });
+      }
+      if (acc.flexShrink !== undefined) {
+        flexProps.set("ShrinkRatio", {
+          type: "number",
+          value: acc.flexShrink,
+        });
+      }
     }
-    if (acc.flexShrink !== undefined) {
-      flexProps.set("ShrinkRatio", {
-        type: "number",
-        value: acc.flexShrink,
-      });
+    if (acc.alignSelf) {
+      const alignment = mapAlignSelf(acc.alignSelf);
+      if (alignment) flexProps.set("ItemLineAlignment", alignment);
     }
     pseudos.push({ type: "UIFlexItem", properties: flexProps });
   }
@@ -1305,6 +1632,48 @@ function finalizeAccumulator(
       });
     }
     pseudos.push({ type: "UISizeConstraint", properties: constraintProps });
+  }
+
+  // Transform: scale() -> ::UIScale
+  if (acc.scale !== undefined) {
+    const scaleProps = new Map<string, RobloxValue>();
+    scaleProps.set("Scale", { type: "number", value: acc.scale });
+    pseudos.push({ type: "UIScale", properties: scaleProps });
+  }
+
+  // Transform: rotate() -> Rotation (direct prop)
+  if (acc.rotation !== undefined) {
+    props.set("Rotation", { type: "number", value: acc.rotation });
+  }
+
+  // Grid layout -> ::UIGridLayout
+  if (acc.hasGrid) {
+    const gridProps = new Map<string, RobloxValue>();
+    if (acc.gridCellWidth || acc.gridCellHeight) {
+      const cellW = acc.gridCellWidth ?? { scale: 0, offset: 100 };
+      const cellH = acc.gridCellHeight ?? { scale: 0, offset: 100 };
+      gridProps.set("CellSize", {
+        type: "UDim2",
+        value: [cellW.scale, cellW.offset, cellH.scale, cellH.offset],
+      });
+    }
+    if (acc.gridGapX || acc.gridGapY) {
+      const gapX = acc.gridGapX ?? { type: "UDim" as const, value: [0, 0] as [number, number] };
+      const gapY = acc.gridGapY ?? { type: "UDim" as const, value: [0, 0] as [number, number] };
+      const xVal = (gapX as { type: "UDim"; value: [number, number] }).value;
+      const yVal = (gapY as { type: "UDim"; value: [number, number] }).value;
+      gridProps.set("CellPadding", {
+        type: "UDim2",
+        value: [xVal[0], xVal[1], yVal[0], yVal[1]],
+      });
+    }
+    if (acc.gridMaxCellsPerRow !== undefined) {
+      gridProps.set("FillDirectionMaxCells", {
+        type: "number",
+        value: acc.gridMaxCellsPerRow,
+      });
+    }
+    pseudos.push({ type: "UIGridLayout", properties: gridProps });
   }
 
   return pseudos;

@@ -285,13 +285,123 @@ describe("combined properties and pseudo-instances", () => {
 });
 
 describe("units edge cases", () => {
-  test("unsupported unit em emits warning", () => {
+  test("em unit converts to px (base 16)", () => {
     const result = compileCss(`.a { width: 10em; }`, { warnLevel: "all" });
-    expect(result.warnings.getWarnings().some(w => w.code === "unsupported-unit")).toBe(true);
+    const size = result.ir.rules[0]!.properties.get("Size");
+    expect(size).toEqual({ type: "UDim2", value: [0, 160, 0, 0] });
   });
 
-  test("unsupported unit rem emits warning", () => {
+  test("rem unit converts to px (base 16)", () => {
     const result = compileCss(`.a { width: 10rem; }`, { warnLevel: "all" });
-    expect(result.warnings.getWarnings().some(w => w.code === "unsupported-unit")).toBe(true);
+    const size = result.ir.rules[0]!.properties.get("Size");
+    expect(size).toEqual({ type: "UDim2", value: [0, 160, 0, 0] });
+  });
+});
+
+describe("Tailwind v4 integration", () => {
+  test("@layer + rem + oklch + flex features compile correctly", () => {
+    const css = `
+      @layer utilities {
+        .p-4 { padding: 1rem; }
+        .flex { display: flex; }
+        .flex-col { flex-direction: column; }
+        .justify-between { justify-content: space-between; }
+        .items-stretch { align-items: stretch; }
+        .gap-2 { gap: 0.5rem; }
+        .grow { flex-grow: 1; }
+        .order-1 { order: 1; }
+        .bg-red-500 { background-color: oklch(0.637 0.237 25.331); }
+        .rounded-lg { border-radius: 0.5rem; }
+        .grid { display: grid; }
+        .grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+        .w-48 { width: 12rem; }
+        .scale-110 { transform: scale(1.1); }
+        .rotate-45 { transform: rotate(45deg); }
+        .self-center { align-self: center; }
+        .basis-40 { flex-basis: 10rem; }
+      }
+    `;
+    const result = compileCss(css, { warnLevel: "none" });
+
+    // Verify padding with rem
+    const padding = result.ir.rules.find(r => r.selector === ".p-4::UIPadding");
+    expect(padding).toBeDefined();
+    expect(padding!.properties.get("PaddingTop")).toEqual({ type: "UDim", value: [0, 16] });
+
+    // Verify flex layout
+    const flex = result.ir.rules.find(r => r.selector === ".flex::UIListLayout");
+    expect(flex).toBeDefined();
+
+    // Verify space-between
+    const jb = result.ir.rules.find(r => r.selector === ".justify-between::UIListLayout");
+    expect(jb).toBeDefined();
+    // space-between should set HorizontalFlex (default row direction)
+    expect(jb!.properties.get("HorizontalFlex")).toEqual({
+      type: "Enum", enum: "UIFlexAlignment", value: "SpaceBetween",
+    });
+
+    // Verify oklch color
+    const bg = result.ir.rules.find(r => r.selector === ".bg-red-500");
+    expect(bg).toBeDefined();
+    expect(bg!.properties.get("BackgroundColor3")).toEqual({
+      type: "Color3", value: [251, 44, 54],
+    });
+
+    // Verify rem border-radius
+    const corner = result.ir.rules.find(r => r.selector === ".rounded-lg::UICorner");
+    expect(corner).toBeDefined();
+    expect(corner!.properties.get("CornerRadius")).toEqual({ type: "UDim", value: [0, 8] });
+
+    // Verify grid
+    const grid = result.ir.rules.find(r => r.selector === ".grid::UIGridLayout");
+    expect(grid).toBeDefined();
+
+    // Verify grid cols
+    const gridCols = result.ir.rules.find(r => r.selector === ".grid-cols-3::UIGridLayout");
+    expect(gridCols).toBeDefined();
+    expect(gridCols!.properties.get("FillDirectionMaxCells")).toEqual({
+      type: "number", value: 3,
+    });
+
+    // Verify rem width
+    const width = result.ir.rules.find(r => r.selector === ".w-48");
+    expect(width).toBeDefined();
+    expect(width!.properties.get("Size")).toEqual({
+      type: "UDim2", value: [0, 192, 0, 0],
+    });
+
+    // Verify scale
+    const scale = result.ir.rules.find(r => r.selector === ".scale-110::UIScale");
+    expect(scale).toBeDefined();
+
+    // Verify rotation
+    const rotate = result.ir.rules.find(r => r.selector === ".rotate-45");
+    expect(rotate).toBeDefined();
+    expect(rotate!.properties.get("Rotation")).toEqual({ type: "number", value: 45 });
+
+    // Verify order
+    const order = result.ir.rules.find(r => r.selector === ".order-1");
+    expect(order).toBeDefined();
+    expect(order!.properties.get("LayoutOrder")).toEqual({ type: "number", value: 1 });
+
+    // Verify align-self
+    const selfCenter = result.ir.rules.find(r => r.selector === ".self-center::UIFlexItem");
+    expect(selfCenter).toBeDefined();
+    expect(selfCenter!.properties.get("ItemLineAlignment")).toEqual({
+      type: "Enum", enum: "ItemLineAlignment", value: "Center",
+    });
+
+    // Verify flex-basis
+    const basis = result.ir.rules.find(r => r.selector === ".basis-40");
+    expect(basis).toBeDefined();
+    expect(basis!.properties.get("Size")).toEqual({
+      type: "UDim2", value: [0, 160, 0, 0],
+    });
+  });
+
+  test("margin emits helpful warning", () => {
+    const result = compileCss(`.a { margin: 1rem; }`, { warnLevel: "all" });
+    const warnings = result.warnings.getWarnings();
+    expect(warnings.some(w => w.message.includes("gap"))).toBe(true);
   });
 });

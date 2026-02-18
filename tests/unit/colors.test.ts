@@ -149,3 +149,51 @@ describe("border color transparency rounding", () => {
     }
   });
 });
+
+describe("oklch colors (Tailwind v4)", () => {
+  test("oklch background-color converts to RGB", () => {
+    const result = compileCss(`.a { background-color: oklch(0.637 0.237 25.331); }`);
+    const color = result.ir.rules[0]!.properties.get("BackgroundColor3");
+    expect(color).toEqual({ type: "Color3", value: [251, 44, 54] });
+  });
+
+  test("oklch text color converts to RGB", () => {
+    const result = compileCss(`.a { color: oklch(0.5 0.2 240); }`);
+    const color = result.ir.rules[0]!.properties.get("TextColor3");
+    expect(color).toBeDefined();
+    expect(color!.type).toBe("Color3");
+  });
+
+  test("oklch with alpha sets transparency", () => {
+    const result = compileCss(`.a { background-color: oklch(0.5 0.2 120 / 0.5); }`);
+    const transparency = result.ir.rules[0]!.properties.get("BackgroundTransparency");
+    expect(transparency).toEqual({ type: "number", value: 0.5 });
+  });
+});
+
+describe("oklab colors", () => {
+  test("oklab converts to RGB", () => {
+    const result = compileCss(`.a { background-color: oklab(0.5 0.1 -0.1); }`);
+    const color = result.ir.rules[0]!.properties.get("BackgroundColor3");
+    expect(color).toBeDefined();
+    expect(color!.type).toBe("Color3");
+  });
+});
+
+describe("lab colors", () => {
+  test("lab converts to RGB", () => {
+    const result = compileCss(`.a { background-color: lab(50% 20 -30); }`);
+    const color = result.ir.rules[0]!.properties.get("BackgroundColor3");
+    expect(color).toBeDefined();
+    expect(color!.type).toBe("Color3");
+  });
+});
+
+describe("lch colors", () => {
+  test("lch converts to RGB", () => {
+    const result = compileCss(`.a { background-color: lch(50% 30 120); }`);
+    const color = result.ir.rules[0]!.properties.get("BackgroundColor3");
+    expect(color).toBeDefined();
+    expect(color!.type).toBe("Color3");
+  });
+});
