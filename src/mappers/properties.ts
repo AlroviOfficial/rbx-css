@@ -12,6 +12,7 @@ import { mapFontFamily, mapFontWeight, mapFontStyle } from "./fonts.ts";
 export interface PropertyMapResult {
   properties: Map<string, RobloxValue>;
   pseudoInstances: PseudoInstanceIR[];
+  overflowScroll: boolean;
 }
 
 interface Accumulator {
@@ -44,6 +45,7 @@ interface Accumulator {
   minHeight?: number;
   maxHeight?: number;
   aspectRatio?: number;
+  overflowScroll?: boolean;
   gradientRotation?: number;
   gradientStops?: Array<{
     position: number;
@@ -63,7 +65,7 @@ export function mapDeclarations(
   }
 
   const pseudoInstances = finalizeAccumulator(acc, props, warnings);
-  return { properties: props, pseudoInstances };
+  return { properties: props, pseudoInstances, overflowScroll: acc.overflowScroll ?? false };
 }
 
 function mapSingleDeclaration(
@@ -351,10 +353,11 @@ function mapSingleDeclaration(
         props.set("ClipsDescendants", { type: "boolean", value: true });
       }
       if (x === "scroll" || y === "scroll") {
+        acc.overflowScroll = true;
         warnings.warn({
           code: "partial-mapping",
           message:
-            "overflow: scroll maps to ScrollingFrame, use ScrollingFrame class directly",
+            "overflow: scroll detected — will trigger ScrollingFrame upgrade via manifest",
         });
       }
       break;

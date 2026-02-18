@@ -16,6 +16,7 @@ export interface CompileOptions {
 export interface CompileResult {
   ir: StyleSheetIR;
   warnings: WarningCollector;
+  overflowScrollClasses: Map<string, boolean>;
 }
 
 export function compile(
@@ -46,6 +47,7 @@ export function compile(
 
   // 5. Map remaining rules to IR
   const irRules: StyleRuleIR[] = [];
+  const overflowScrollClasses = new Map<string, boolean>();
 
   for (const rule of styleRules) {
     for (const selectorComponents of rule.selectors) {
@@ -60,10 +62,23 @@ export function compile(
       );
       if (!mappedSelector) continue;
 
-      const { properties, pseudoInstances } = mapDeclarations(
+      const { properties, pseudoInstances, overflowScroll } = mapDeclarations(
         rule.declarations,
         warnings,
       );
+
+      // Track overflow:scroll per class selector for the manifest
+      const classMatches = mappedSelector.match(/\.([a-zA-Z0-9_-]+)/g);
+      if (classMatches) {
+        for (const match of classMatches) {
+          const className = match.slice(1);
+          if (overflowScroll) {
+            overflowScrollClasses.set(className, true);
+          } else if (!overflowScrollClasses.has(className)) {
+            overflowScrollClasses.set(className, false);
+          }
+        }
+      }
 
       // Main rule with direct properties
       if (properties.size > 0) {
@@ -102,5 +117,5 @@ export function compile(
     themes: themeMap.size > 0 ? themeMap : undefined,
   };
 
-  return { ir, warnings };
+  return { ir, warnings, overflowScrollClasses };
 }

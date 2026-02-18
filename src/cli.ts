@@ -3,6 +3,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { compile } from "./compiler.ts";
 import { generateLuau } from "./codegen/luau.ts";
 import { generateRBXMX } from "./codegen/rbxmx.ts";
+import { generateManifest } from "./manifest.ts";
 import { startWatch } from "./watch.ts";
 import type { WarningLevel } from "./warnings.ts";
 
@@ -28,6 +29,7 @@ export function createCLI(): Command {
       "Emit tokens as a separate StyleSheet",
       false,
     )
+    .option("--manifest", "Emit a .manifest.json alongside the output", false)
     .action(
       (
         files: string[],
@@ -39,6 +41,7 @@ export function createCLI(): Command {
           strict: boolean;
           minify: boolean;
           tokensSheet: boolean;
+          manifest: boolean;
         },
       ) => {
         handleCompile(files, opts);
@@ -79,6 +82,7 @@ function handleCompile(
     warn: string;
     strict: boolean;
     minify: boolean;
+    manifest: boolean;
   },
 ): void {
   const sources = files.map((f) => ({
@@ -118,6 +122,14 @@ function handleCompile(
     console.log(`Written to ${opts.output}`);
   } else {
     process.stdout.write(output);
+  }
+
+  // Emit manifest alongside output
+  if (opts.manifest && opts.output) {
+    const manifest = generateManifest(result.overflowScrollClasses);
+    const manifestPath = opts.output.replace(/\.(luau|rbxmx)$/, ".manifest.json");
+    writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
+    console.log(`Manifest written to ${manifestPath}`);
   }
 }
 
