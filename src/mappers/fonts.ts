@@ -14,7 +14,7 @@ const FONT_FAMILY_MAP: Record<string, string> = {
 
 export function mapFontFamily(
   families: string[],
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): string {
   for (const raw of families) {
     const normalized = raw.replace(/['"]/g, "").trim().toLowerCase();

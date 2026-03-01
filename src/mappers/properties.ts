@@ -65,7 +65,7 @@ interface Accumulator {
 
 export function mapDeclarations(
   declarations: unknown[],
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): PropertyMapResult {
   const props = new Map<string, RobloxValue>();
   const acc: Accumulator = { hasFlex: false, hasGrid: false };
@@ -75,14 +75,18 @@ export function mapDeclarations(
   }
 
   const pseudoInstances = finalizeAccumulator(acc, props, warnings);
-  return { properties: props, pseudoInstances, overflowScroll: acc.overflowScroll ?? false };
+  return {
+    properties: props,
+    pseudoInstances,
+    overflowScroll: acc.overflowScroll ?? false,
+  };
 }
 
 function mapSingleDeclaration(
   decl: Record<string, unknown>,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   const property = decl.property as string;
   const value = decl.value;
@@ -95,7 +99,12 @@ function mapSingleDeclaration(
 
   // Handle custom properties (:root variables handled elsewhere)
   if (property === "custom") {
-    handleCustomProperty(value as Record<string, unknown>, props, acc, warnings);
+    handleCustomProperty(
+      value as Record<string, unknown>,
+      props,
+      acc,
+      warnings
+    );
     return;
   }
 
@@ -203,7 +212,7 @@ function mapSingleDeclaration(
       if (row?.type === "length-percentage") {
         const result = convertLengthDimension(
           row.value as Record<string, unknown>,
-          warnings,
+          warnings
         );
         if (result && result !== "auto") {
           acc.gap = toUDim(result);
@@ -213,7 +222,7 @@ function mapSingleDeclaration(
       if (column?.type === "length-percentage") {
         const result = convertLengthDimension(
           column.value as Record<string, unknown>,
-          warnings,
+          warnings
         );
         if (result && result !== "auto") {
           acc.gridGapX = toUDim(result);
@@ -275,7 +284,8 @@ function mapSingleDeclaration(
     case "padding-inline-start":
     case "padding-inline-end": {
       // Map logical to physical: start→left, end→right (LTR)
-      const physicalProp = property === "padding-inline-start" ? "padding-left" : "padding-right";
+      const physicalProp =
+        property === "padding-inline-start" ? "padding-left" : "padding-right";
       handlePaddingSide(physicalProp, value, acc, warnings);
       break;
     }
@@ -283,7 +293,8 @@ function mapSingleDeclaration(
     case "padding-block-start":
     case "padding-block-end": {
       // Map logical to physical: start→top, end→bottom
-      const physicalProp = property === "padding-block-start" ? "padding-top" : "padding-bottom";
+      const physicalProp =
+        property === "padding-block-start" ? "padding-top" : "padding-bottom";
       handlePaddingSide(physicalProp, value, acc, warnings);
       break;
     }
@@ -395,7 +406,11 @@ function mapSingleDeclaration(
     case "vertical-align": {
       const v = value as Record<string, unknown>;
       const align =
-        typeof v === "string" ? v : v.type === "keyword" ? (v.value as string) : "top";
+        typeof v === "string"
+          ? v
+          : v.type === "keyword"
+          ? (v.value as string)
+          : "top";
       props.set("TextYAlignment", mapTextYAlignment(align));
       break;
     }
@@ -598,7 +613,7 @@ function mapSingleDeclaration(
 function handleDisplay(
   value: unknown,
   props: Map<string, RobloxValue>,
-  acc: Accumulator,
+  acc: Accumulator
 ): void {
   const v = value as Record<string, unknown>;
 
@@ -619,7 +634,7 @@ function handleDisplay(
 
 function handleSize(
   value: unknown,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): UDimResult | "auto" | undefined {
   const v = value as Record<string, unknown>;
 
@@ -636,7 +651,7 @@ function handleSize(
 function handlePadding(
   value: Record<string, unknown>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   for (const [side, key] of [
     ["top", "paddingTop"],
@@ -658,7 +673,7 @@ function handlePaddingSide(
   property: string,
   value: unknown,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   const v = value as Record<string, unknown>;
   if (v.type === "length-percentage") {
@@ -686,7 +701,7 @@ function handlePaddingSide(
 function handleBorder(
   value: Record<string, unknown>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   // Width
   const width = value.width as Record<string, unknown> | undefined;
@@ -721,7 +736,7 @@ function handleBorder(
 function handleBorderRadius(
   value: Record<string, unknown>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   // lightningcss gives us topLeft, topRight, bottomRight, bottomLeft
   // Each is an array of two dimensions (horizontal, vertical)
@@ -740,7 +755,7 @@ function handleBorderRadius(
         dim.type === first.type &&
         JSON.stringify(dim.value) === JSON.stringify(first.value)
       );
-    },
+    }
   );
 
   if (!allSame) {
@@ -777,7 +792,7 @@ function handleBackground(
   value: unknown,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   const layers = value as Record<string, unknown>[];
   if (!Array.isArray(layers) || layers.length === 0) return;
@@ -802,7 +817,13 @@ function handleBackground(
   const color = layer.color as Record<string, unknown> | undefined;
   if (color) {
     const result = convertCssColor(color);
-    if (result && result.color[0] === 0 && result.color[1] === 0 && result.color[2] === 0 && result.transparency === 1) {
+    if (
+      result &&
+      result.color[0] === 0 &&
+      result.color[1] === 0 &&
+      result.color[2] === 0 &&
+      result.transparency === 1
+    ) {
       // background: transparent
       props.set("BackgroundTransparency", { type: "number", value: 1 });
     } else if (result) {
@@ -820,7 +841,7 @@ function handleBackground(
 function handleLinearGradient(
   gradient: Record<string, unknown>,
   acc: Accumulator,
-  _warnings: WarningCollector,
+  _warnings: WarningCollector
 ): void {
   // Direction
   const direction = gradient.direction as Record<string, unknown> | undefined;
@@ -844,7 +865,7 @@ function handleLinearGradient(
           const position =
             item.position !== null
               ? extractGradientPosition(
-                  item.position as Record<string, unknown>,
+                  item.position as Record<string, unknown>
                 )
               : autoIndex / Math.max(stopCount - 1, 1);
           acc.gradientStops.push({
@@ -892,7 +913,7 @@ function handleObjectFit(value: string, props: Map<string, RobloxValue>): void {
 
 function handleTransformOrigin(
   value: Record<string, unknown>,
-  props: Map<string, RobloxValue>,
+  props: Map<string, RobloxValue>
 ): void {
   const x = resolveAnchorAxis(value.x as Record<string, unknown>);
   const y = resolveAnchorAxis(value.y as Record<string, unknown>);
@@ -921,7 +942,7 @@ function resolveAnchorAxis(axis: Record<string, unknown>): number | null {
 function handleOutline(
   value: Record<string, unknown>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   // outline maps to UIStroke with ApplyStrokeMode = Contextual
   handleBorder(value, acc, warnings);
@@ -933,7 +954,7 @@ function handleCustomProperty(
   value: Record<string, unknown>,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   // lightningcss treats some unknown properties as custom
   const name = value.name as string;
@@ -957,7 +978,7 @@ function handleUnparsed(
   unparsed: Record<string, unknown>,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   const propertyId = unparsed.propertyId as Record<string, unknown>;
   const propName = propertyId.property as string;
@@ -991,7 +1012,7 @@ function mapTokenReference(
   cssProperty: string,
   tokenName: string,
   props: Map<string, RobloxValue>,
-  acc: Accumulator,
+  acc: Accumulator
 ): void {
   const tokenRef: RobloxValue = { type: "token", name: tokenName };
 
@@ -1079,7 +1100,7 @@ function mapTextYAlignment(value: string): RobloxValue {
 
 function extractPxFromLengthPercentage(
   value: unknown,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): number | null {
   const v = value as Record<string, unknown>;
   if (v.type === "length-percentage") {
@@ -1087,7 +1108,8 @@ function extractPxFromLengthPercentage(
     if (inner.type === "dimension") {
       const dim = inner.value as Record<string, unknown>;
       if (dim.unit === "px") return dim.value as number;
-      if (dim.unit === "rem" || dim.unit === "em") return (dim.value as number) * 16;
+      if (dim.unit === "rem" || dim.unit === "em")
+        return (dim.value as number) * 16;
     }
   }
   return null;
@@ -1115,7 +1137,7 @@ function extractItemsAlignment(v: Record<string, unknown>): string {
 function handleTransform(
   transforms: unknown[],
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   if (!Array.isArray(transforms)) return;
   for (const t of transforms) {
@@ -1124,8 +1146,8 @@ function handleTransform(
       case "scale": {
         const vals = tf.value as Array<Record<string, unknown>>;
         if (vals && vals.length >= 1) {
-          const x = vals[0].value as number;
-          const y = vals.length >= 2 ? (vals[1].value as number) : x;
+          const x = vals[0]!.value as number;
+          const y = vals.length >= 2 ? (vals[1]!.value as number) : x;
           // Use average for uniform UIScale (Roblox UIScale is uniform)
           acc.scale = x === y ? x : (x + y) / 2;
         }
@@ -1159,7 +1181,7 @@ function handleTransform(
 
 function extractTrackSize(
   trackBreadth: Record<string, unknown>,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): UDimResult | null {
   // track-breadth -> length -> dimension
   if (trackBreadth.type === "length") {
@@ -1185,7 +1207,7 @@ function extractTrackSize(
 function handleGridTemplateColumns(
   value: unknown,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   const v = value as Record<string, unknown>;
   if (v.type !== "track-list") return;
@@ -1208,7 +1230,7 @@ function handleGridTemplateColumns(
         if (first.type === "track-breadth") {
           const size = extractTrackSize(
             first.value as Record<string, unknown>,
-            warnings,
+            warnings
           );
           if (size) acc.gridCellWidth = size;
         }
@@ -1222,7 +1244,7 @@ function handleGridTemplateColumns(
         if (breadth.type === "track-breadth") {
           const size = extractTrackSize(
             breadth.value as Record<string, unknown>,
-            warnings,
+            warnings
           );
           if (size) acc.gridCellWidth = size;
         }
@@ -1234,7 +1256,7 @@ function handleGridTemplateColumns(
 function handleGridTemplateRows(
   value: unknown,
   acc: Accumulator,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): void {
   const v = value as Record<string, unknown>;
   if (v.type !== "track-list") return;
@@ -1252,7 +1274,7 @@ function handleGridTemplateRows(
         if (first.type === "track-breadth") {
           const size = extractTrackSize(
             first.value as Record<string, unknown>,
-            warnings,
+            warnings
           );
           if (size) acc.gridCellHeight = size;
         }
@@ -1262,7 +1284,7 @@ function handleGridTemplateRows(
       if (breadth.type === "track-breadth") {
         const size = extractTrackSize(
           breadth.value as Record<string, unknown>,
-          warnings,
+          warnings
         );
         if (size) {
           acc.gridCellHeight = size;
@@ -1282,7 +1304,7 @@ function mapFillDirection(direction: string): RobloxValue {
 
 function mapJustifyContent(
   justifyContent: string,
-  flexDirection?: string,
+  flexDirection?: string
 ): { prop: string; value: RobloxValue } | null {
   const isHorizontal =
     !flexDirection ||
@@ -1290,9 +1312,7 @@ function mapJustifyContent(
     flexDirection === "row-reverse";
 
   const prop = isHorizontal ? "HorizontalAlignment" : "VerticalAlignment";
-  const enumName = isHorizontal
-    ? "HorizontalAlignment"
-    : "VerticalAlignment";
+  const enumName = isHorizontal ? "HorizontalAlignment" : "VerticalAlignment";
 
   switch (justifyContent) {
     case "flex-start":
@@ -1342,7 +1362,7 @@ function mapJustifyContent(
 
 function mapAlignItems(
   alignItems: string,
-  flexDirection?: string,
+  flexDirection?: string
 ): { prop: string; value: RobloxValue } | null {
   const isHorizontal =
     !flexDirection ||
@@ -1351,9 +1371,7 @@ function mapAlignItems(
 
   // Cross-axis is opposite
   const prop = isHorizontal ? "VerticalAlignment" : "HorizontalAlignment";
-  const enumName = isHorizontal
-    ? "VerticalAlignment"
-    : "HorizontalAlignment";
+  const enumName = isHorizontal ? "VerticalAlignment" : "HorizontalAlignment";
 
   switch (alignItems) {
     case "flex-start":
@@ -1391,9 +1409,7 @@ function mapAlignItems(
   }
 }
 
-function mapAlignSelf(
-  alignSelf: string,
-): RobloxValue | null {
+function mapAlignSelf(alignSelf: string): RobloxValue | null {
   switch (alignSelf) {
     case "flex-start":
     case "start":
@@ -1413,7 +1429,7 @@ function mapAlignSelf(
 function finalizeAccumulator(
   acc: Accumulator,
   props: Map<string, RobloxValue>,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): PseudoInstanceIR[] {
   const pseudos: PseudoInstanceIR[] = [];
 
@@ -1566,13 +1582,13 @@ function finalizeAccumulator(
     if (acc.hasFlex || acc.flexDirection) {
       layoutProps.set(
         "FillDirection",
-        mapFillDirection(acc.flexDirection ?? "row"),
+        mapFillDirection(acc.flexDirection ?? "row")
       );
     }
     if (acc.justifyContent) {
       const alignment = mapJustifyContent(
         acc.justifyContent,
-        acc.flexDirection,
+        acc.flexDirection
       );
       if (alignment) layoutProps.set(alignment.prop, alignment.value);
     }
@@ -1693,8 +1709,14 @@ function finalizeAccumulator(
       });
     }
     if (acc.gridGapX || acc.gridGapY) {
-      const gapX = acc.gridGapX ?? { type: "UDim" as const, value: [0, 0] as [number, number] };
-      const gapY = acc.gridGapY ?? { type: "UDim" as const, value: [0, 0] as [number, number] };
+      const gapX = acc.gridGapX ?? {
+        type: "UDim" as const,
+        value: [0, 0] as [number, number],
+      };
+      const gapY = acc.gridGapY ?? {
+        type: "UDim" as const,
+        value: [0, 0] as [number, number],
+      };
       const xVal = (gapX as { type: "UDim"; value: [number, number] }).value;
       const yVal = (gapY as { type: "UDim"; value: [number, number] }).value;
       gridProps.set("CellPadding", {

@@ -6,7 +6,7 @@ export interface CSSManifest {
 }
 
 export function generateManifest(
-  overflowScrollClasses: Map<string, boolean>,
+  overflowScrollClasses: Map<string, boolean>
 ): CSSManifest {
   const classes: Record<string, { overflowScroll: boolean }> = {};
   for (const [className, overflowScroll] of overflowScrollClasses) {

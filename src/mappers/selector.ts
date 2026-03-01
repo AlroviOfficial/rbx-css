@@ -12,7 +12,7 @@ interface SelectorComponent {
 
 export function mapSelector(
   components: SelectorComponent[],
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): string | null {
   const parts: string[] = [];
 
@@ -97,17 +97,17 @@ export function isRootSelector(selectors: SelectorComponent[][]): boolean {
     (sel) =>
       sel.length === 1 &&
       sel[0]!.type === "pseudo-class" &&
-      sel[0]!.kind === "root",
+      sel[0]!.kind === "root"
   );
 }
 
 export function isDataThemeSelector(
-  selectors: SelectorComponent[][],
+  selectors: SelectorComponent[][]
 ): string | null {
   for (const sel of selectors) {
     for (const comp of sel) {
       if (comp.type === "attribute") {
-        const c = comp as Record<string, unknown>;
+        const c = comp as unknown as Record<string, unknown>;
         if (c.name === "data-theme") {
           const op = c.operation as Record<string, unknown> | undefined;
           if (op?.operator === "equal") {

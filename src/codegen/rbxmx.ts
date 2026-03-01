@@ -1,14 +1,9 @@
-import type {
-  StyleSheetIR,
-  RobloxValue,
-  TokenValue,
-} from "../ir/types.ts";
+import type { StyleSheetIR, RobloxValue, TokenValue } from "../ir/types.ts";
 import { rgbToHex } from "../mappers/colors.ts";
 
 export function generateRBXMX(ir: StyleSheetIR): string {
   let referentCounter = 0;
-  const nextReferent = () =>
-    `RBX${String(++referentCounter).padStart(4, "0")}`;
+  const nextReferent = () => `RBX${String(++referentCounter).padStart(4, "0")}`;
 
   const lines: string[] = [];
   lines.push('<roblox version="4">');
@@ -24,25 +19,27 @@ export function generateRBXMX(ir: StyleSheetIR): string {
   if (ir.tokens.size > 0) {
     lines.push(`    <!-- Tokens -->`);
     for (const [name, value] of ir.tokens) {
-      lines.push(`    <!-- ${escapeXml(name)}: ${serializeTokenComment(value)} -->`);
+      lines.push(
+        `    <!-- ${escapeXml(name)}: ${serializeTokenComment(value)} -->`
+      );
     }
   }
 
   // StyleRule children
   for (const rule of ir.rules) {
     const ruleRef = nextReferent();
-    lines.push(`    <Item class="StyleRule" referent="${ruleRef}">`);
-    lines.push("      <Properties>");
     lines.push(
+      `    <Item class="StyleRule" referent="${ruleRef}">`,
+      "      <Properties>",
       `        <string name="Selector">${escapeXml(rule.selector)}</string>`,
+      "      </Properties>"
     );
-    lines.push("      </Properties>");
     // Properties as comments (RBXMX StyleRule property encoding is complex)
     if (rule.properties.size > 0) {
       lines.push("      <!-- Properties:");
       for (const [propName, propValue] of rule.properties) {
         lines.push(
-          `        ${escapeXml(propName)} = ${serializeValueComment(propValue)}`,
+          `        ${escapeXml(propName)} = ${serializeValueComment(propValue)}`
         );
       }
       lines.push("      -->");
@@ -58,28 +55,25 @@ export function generateRBXMX(ir: StyleSheetIR): string {
       const themeRef = nextReferent();
       lines.push(
         `  <Item class="StyleSheet" referent="${themeRef}">`,
-      );
-      lines.push("    <Properties>");
-      lines.push(
+        "    <Properties>",
         `      <string name="Name">${escapeXml(themeIR.name)}</string>`,
+        "    </Properties>",
+        "  </Item>"
       );
-      lines.push("    </Properties>");
-      lines.push("  </Item>");
     }
   }
 
-  lines.push("</roblox>");
-  lines.push("");
+  lines.push("</roblox>", "");
 
   return lines.join("\n");
 }
 
 function escapeXml(s: string): string {
   return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
 }
 
 function serializeTokenComment(value: TokenValue): string {

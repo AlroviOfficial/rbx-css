@@ -24,14 +24,14 @@ export interface ParsedStyleSheet {
  */
 function resolveNestingSelector(
   parentSelectors: unknown[][],
-  childSelectors: unknown[][],
+  childSelectors: unknown[][]
 ): unknown[][] {
   const resolved: unknown[][] = [];
 
   for (const childSel of childSelectors) {
     // Check if the child selector contains a nesting token (&)
     const nestingIndex = childSel.findIndex(
-      (comp: unknown) => (comp as Record<string, unknown>).type === "nesting",
+      (comp: unknown) => (comp as Record<string, unknown>).type === "nesting"
     );
 
     if (nestingIndex === -1) {
@@ -64,9 +64,7 @@ function resolveNestingSelector(
  * Resolve a full selector stack by iteratively resolving each nesting level.
  * The stack goes from outermost (index 0) to innermost (last index).
  */
-function resolveFullSelectorStack(
-  selectorStack: unknown[][][],
-): unknown[][] {
+function resolveFullSelectorStack(selectorStack: unknown[][][]): unknown[][] {
   if (selectorStack.length === 0) return [];
   if (selectorStack.length === 1) return selectorStack[0]!;
 
@@ -114,7 +112,7 @@ export function parseCSS(source: string, filename: string): ParsedStyleSheet {
           const parsed: ParsedRule = {
             selectors: JSON.parse(JSON.stringify(selectors)),
             declarations: JSON.parse(
-              JSON.stringify(decls.declarations as unknown[]),
+              JSON.stringify(decls.declarations as unknown[])
             ),
           };
 
@@ -132,12 +130,12 @@ export function parseCSS(source: string, filename: string): ParsedStyleSheet {
           const value = rule.value as Record<string, unknown>;
           const decls = value.declarations as Record<string, unknown>;
           const declarations = JSON.parse(
-            JSON.stringify(decls.declarations as unknown[]),
+            JSON.stringify(decls.declarations as unknown[])
           );
 
           if (declarations.length > 0 && selectorStack.length > 0) {
             const resolvedSelectors = resolveFullSelectorStack(
-              selectorStack.map((s) => JSON.parse(JSON.stringify(s))),
+              selectorStack.map((s) => JSON.parse(JSON.stringify(s)))
             );
             const parsed: ParsedRule = {
               selectors: resolvedSelectors,

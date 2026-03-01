@@ -42,9 +42,7 @@ export class WarningCollector {
   format(): string {
     return this.warnings
       .map((w) => {
-        const loc = w.file
-          ? `${w.file}:${w.line ?? 0}:${w.column ?? 0} `
-          : "";
+        const loc = w.file ? `${w.file}:${w.line ?? 0}:${w.column ?? 0} ` : "";
         return `warning: ${loc}[${w.code}] ${w.message}`;
       })
       .join("\n");

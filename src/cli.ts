@@ -24,11 +24,7 @@ export function createCLI(): Command {
     .option("--warn <level>", "Warning level: all, unsupported, none", "all")
     .option("--strict", "Treat warnings as errors", false)
     .option("--minify", "Minify Luau output", false)
-    .option(
-      "--tokens-sheet",
-      "Emit tokens as a separate StyleSheet",
-      false,
-    )
+    .option("--tokens-sheet", "Emit tokens as a separate StyleSheet", false)
     .option("--manifest", "Emit a .manifest.json alongside the output", false)
     .action(
       (
@@ -42,10 +38,10 @@ export function createCLI(): Command {
           minify: boolean;
           tokensSheet: boolean;
           manifest: boolean;
-        },
+        }
       ) => {
         handleCompile(files, opts);
-      },
+      }
     );
 
   program
@@ -64,10 +60,10 @@ export function createCLI(): Command {
           name: string;
           format?: string;
           warn: string;
-        },
+        }
       ) => {
         handleWatch(watchPath, opts);
-      },
+      }
     );
 
   return program;
@@ -83,7 +79,7 @@ function handleCompile(
     strict: boolean;
     minify: boolean;
     manifest: boolean;
-  },
+  }
 ): void {
   const sources = files.map((f) => ({
     filename: f,
@@ -127,7 +123,10 @@ function handleCompile(
   // Emit manifest alongside output
   if (opts.manifest && opts.output) {
     const manifest = generateManifest(result.overflowScrollClasses);
-    const manifestPath = opts.output.replace(/\.(luau|rbxmx)$/, ".manifest.json");
+    const manifestPath = opts.output.replace(
+      /\.(luau|rbxmx)$/,
+      ".manifest.json"
+    );
     writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     console.log(`Manifest written to ${manifestPath}`);
   }
@@ -140,7 +139,7 @@ function handleWatch(
     name: string;
     format?: string;
     warn: string;
-  },
+  }
 ): void {
   const format = opts.format ?? inferFormat(opts.output);
 

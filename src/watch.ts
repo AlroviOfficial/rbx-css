@@ -3,7 +3,7 @@ import { join, extname } from "path";
 
 export function startWatch(
   inputPath: string,
-  onFileChange: (files: string[]) => void,
+  onFileChange: (files: string[]) => void
 ): void {
   const isDir = statSync(inputPath).isDirectory();
   const cssFiles = isDir ? findCSSFiles(inputPath) : [inputPath];

@@ -8,7 +8,7 @@ export interface UDimResult {
 
 export function convertLengthDimension(
   dim: unknown,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): UDimResult | "auto" | null {
   if (!dim || typeof dim !== "object") return null;
 
@@ -59,7 +59,7 @@ export function convertLengthDimension(
 
 export function convertLengthValue(
   len: unknown,
-  warnings: WarningCollector,
+  warnings: WarningCollector
 ): UDimResult | null {
   if (!len || typeof len !== "object") return null;
 

@@ -15,8 +15,7 @@ export function convertCssColor(cssColor: unknown): ColorResult | null {
     const alpha = c.alpha as number;
     return {
       color: [r, g, b],
-      transparency:
-        alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
+      transparency: alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
     };
   }
 
@@ -25,8 +24,7 @@ export function convertCssColor(cssColor: unknown): ColorResult | null {
     const alpha = c.alpha as number;
     return {
       color: rgb,
-      transparency:
-        alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
+      transparency: alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
     };
   }
 
@@ -35,8 +33,7 @@ export function convertCssColor(cssColor: unknown): ColorResult | null {
     const alpha = c.alpha as number;
     return {
       color: rgb,
-      transparency:
-        alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
+      transparency: alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
     };
   }
 
@@ -45,8 +42,7 @@ export function convertCssColor(cssColor: unknown): ColorResult | null {
     const alpha = c.alpha as number;
     return {
       color: rgb,
-      transparency:
-        alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
+      transparency: alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
     };
   }
 
@@ -58,8 +54,7 @@ export function convertCssColor(cssColor: unknown): ColorResult | null {
     const alpha = c.alpha as number;
     return {
       color: rgb,
-      transparency:
-        alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
+      transparency: alpha < 1 ? Math.round((1 - alpha) * 100) / 100 : undefined,
     };
   }
 
@@ -82,11 +77,7 @@ function clampRgb(r: number, g: number, b: number): [number, number, number] {
   ];
 }
 
-function oklabToRgb(
-  L: number,
-  a: number,
-  b: number,
-): [number, number, number] {
+function oklabToRgb(L: number, a: number, b: number): [number, number, number] {
   // OKLab → LMS (cube)
   const l_ = L + 0.3963377774 * a + 0.2158037573 * b;
   const m_ = L - 0.1055613458 * a - 0.0638541728 * b;
@@ -104,20 +95,12 @@ function oklabToRgb(
   return clampRgb(gammaCorrect(rLin), gammaCorrect(gLin), gammaCorrect(bLin));
 }
 
-function oklchToRgb(
-  L: number,
-  C: number,
-  H: number,
-): [number, number, number] {
+function oklchToRgb(L: number, C: number, H: number): [number, number, number] {
   const hRad = (H * Math.PI) / 180;
   return oklabToRgb(L, C * Math.cos(hRad), C * Math.sin(hRad));
 }
 
-function labToRgb(
-  L: number,
-  a: number,
-  b: number,
-): [number, number, number] {
+function labToRgb(L: number, a: number, b: number): [number, number, number] {
   // CIE Lab → XYZ (D65 illuminant)
   const fy = (L + 16) / 116;
   const fx = a / 500 + fy;
@@ -167,7 +150,6 @@ export function parseNamedColor(name: string): ColorResult | null {
 
 export function rgbToHex(rgb: [number, number, number]): string {
   return (
-    "#" +
-    rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")
+    "#" + rgb.map((c) => Math.round(c).toString(16).padStart(2, "0")).join("")
   );
 }
