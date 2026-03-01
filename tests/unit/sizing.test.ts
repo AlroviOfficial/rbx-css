@@ -1,12 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
-
-function compileCss(css: string) {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel: "none", strict: false },
-  );
-}
+import { compileCss } from "../helpers.ts";
 
 describe("viewport units", () => {
   test("width: 100vw -> UDim2 with scale 1", () => {

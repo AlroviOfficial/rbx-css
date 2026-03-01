@@ -1,12 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
-
-function compileCss(css: string, warnLevel: "all" | "none" = "none") {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel, strict: false },
-  );
-}
+import { compileCss } from "../helpers.ts";
 
 describe("transform: scale()", () => {
   test("scale(1.5) produces UIScale pseudo-instance", () => {

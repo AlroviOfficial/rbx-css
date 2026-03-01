@@ -12,6 +12,7 @@ export interface CompileOptions {
   name: string;
   warnLevel: WarningLevel;
   strict: boolean;
+  includeBaseRules?: boolean;
 }
 
 export interface CompileResult {
@@ -115,7 +116,9 @@ export function compile(
   // 5a. Add base Roblox element rules (CSS equivalent of browser defaults)
   // In CSS, text elements auto-size to content. In Roblox, AutomaticSize must be set explicitly.
   // These element-type selectors have low specificity, so class-based rules override them.
-  generateBaseElementRules(irRules);
+  if (options.includeBaseRules !== false) {
+    generateBaseElementRules(irRules);
+  }
 
   // 5b. Generate compound selectors for width+height combinations
   // CSS has separate width/height but Roblox has a single Size UDim2.

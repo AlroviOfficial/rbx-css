@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss, compileMulti } from "../helpers.ts";
 import { generateLuau } from "../../src/codegen/luau.ts";
 import { generateRBXMX } from "../../src/codegen/rbxmx.ts";
 import { readFileSync } from "fs";
@@ -11,10 +11,7 @@ const INPUT_CSS = readFileSync(
 );
 
 describe("full spec example", () => {
-  const result = compile(
-    [{ filename: "styles.css", content: INPUT_CSS }],
-    { name: "StyleSheet", warnLevel: "all", strict: false },
-  );
+  const result = compileCss(INPUT_CSS, { name: "StyleSheet", warnLevel: "all" });
 
   test("extracts 5 tokens from :root", () => {
     expect(result.ir.tokens.size).toBe(5);
@@ -143,10 +140,7 @@ describe("theme compilation", () => {
     "utf-8",
   );
 
-  const result = compile(
-    [{ filename: "themes.css", content: INPUT }],
-    { name: "StyleSheet", warnLevel: "all", strict: false },
-  );
+  const result = compileCss(INPUT, { name: "StyleSheet", warnLevel: "all" });
 
   test("extracts base tokens", () => {
     expect(result.ir.tokens.size).toBe(2);
@@ -185,12 +179,12 @@ describe("multi-file merge", () => {
     const css1 = `:root { --primary: #335fff; } .a { color: white; }`;
     const css2 = `.b { color: black; }`;
 
-    const result = compile(
+    const result = compileMulti(
       [
         { filename: "a.css", content: css1 },
         { filename: "b.css", content: css2 },
       ],
-      { name: "Merged", warnLevel: "none", strict: false },
+      { name: "Merged" },
     );
 
     expect(result.ir.tokens.has("primary")).toBe(true);
@@ -202,10 +196,7 @@ describe("multi-file merge", () => {
 
 describe("empty CSS", () => {
   test("produces empty StyleSheet", () => {
-    const result = compile(
-      [{ filename: "empty.css", content: "" }],
-      { name: "Empty", warnLevel: "all", strict: false },
-    );
+    const result = compileCss("", { name: "Empty", warnLevel: "all" });
 
     expect(result.ir.tokens.size).toBe(0);
     expect(result.ir.rules.length).toBe(0);

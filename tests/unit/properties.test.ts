@@ -1,13 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss } from "../helpers.ts";
 import { generateLuau } from "../../src/codegen/luau.ts";
-
-function compileCss(css: string) {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel: "none", strict: false },
-  );
-}
 
 function compileAndGenerate(css: string) {
   const result = compileCss(css);
@@ -385,27 +378,18 @@ describe("CSS variables / tokens", () => {
 
 describe("warnings", () => {
   test("unsupported property emits warning", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { box-shadow: 0 0 10px black; }` }],
-      { name: "Test", warnLevel: "all", strict: false },
-    );
+    const result = compileCss(`.a { box-shadow: 0 0 10px black; }`, { warnLevel: "all" });
     const warnings = result.warnings.getWarnings();
     expect(warnings.length).toBeGreaterThan(0);
   });
 
   test("strict mode treats warnings as errors", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { box-shadow: 0 0 10px black; }` }],
-      { name: "Test", warnLevel: "all", strict: true },
-    );
+    const result = compileCss(`.a { box-shadow: 0 0 10px black; }`, { warnLevel: "all", strict: true });
     expect(result.warnings.hasErrors()).toBe(true);
   });
 
   test("warn level 'none' suppresses all warnings", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { box-shadow: 0 0 10px black; }` }],
-      { name: "Test", warnLevel: "none", strict: false },
-    );
+    const result = compileCss(`.a { box-shadow: 0 0 10px black; }`);
     expect(result.warnings.getWarnings().length).toBe(0);
   });
 });

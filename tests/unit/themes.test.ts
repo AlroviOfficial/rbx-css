@@ -1,13 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss } from "../helpers.ts";
 import { generateLuau } from "../../src/codegen/luau.ts";
-
-function compileCss(css: string) {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel: "none", strict: false },
-  );
-}
 
 describe("data-theme attribute themes", () => {
   test("single theme extracted", () => {
@@ -52,9 +45,9 @@ describe("data-theme attribute themes", () => {
   });
 
   test("theme naming uses parent stylesheet name", () => {
-    const result = compile(
-      [{ filename: "t.css", content: `:root { --a: #fff; } [data-theme="dark"] { --a: #000; }` }],
-      { name: "CoreSheet", warnLevel: "none", strict: false },
+    const result = compileCss(
+      `:root { --a: #fff; } [data-theme="dark"] { --a: #000; }`,
+      { name: "CoreSheet" },
     );
     const dark = result.ir.themes!.get("dark")!;
     expect(dark.name).toBe("CoreSheet_dark");

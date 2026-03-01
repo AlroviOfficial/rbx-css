@@ -1,5 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss } from "../helpers.ts";
 import { WarningCollector } from "../../src/warnings.ts";
 
 describe("warning collector", () => {
@@ -68,51 +68,33 @@ describe("warning collector", () => {
 
 describe("warning integration with compiler", () => {
   test("unsupported property: box-shadow", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { box-shadow: 0 0 10px black; }` }],
-      { name: "T", warnLevel: "all", strict: false },
-    );
+    const result = compileCss(`.a { box-shadow: 0 0 10px black; }`, "all");
     const msgs = result.warnings.getWarnings().map(w => w.message);
     expect(msgs.some(m => m.includes("box-shadow") || m.includes("no Roblox"))).toBe(true);
   });
 
   test("unsupported property: text-decoration", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { text-decoration: underline; }` }],
-      { name: "T", warnLevel: "all", strict: false },
-    );
+    const result = compileCss(`.a { text-decoration: underline; }`, "all");
     expect(result.warnings.getWarnings().length).toBeGreaterThan(0);
   });
 
   test("unsupported property: transition", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { transition: all 0.3s ease; }` }],
-      { name: "T", warnLevel: "all", strict: false },
-    );
+    const result = compileCss(`.a { transition: all 0.3s ease; }`, "all");
     expect(result.warnings.getWarnings().length).toBeGreaterThan(0);
   });
 
   test("overflow: scroll emits partial-mapping warning", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { overflow: scroll; }` }],
-      { name: "T", warnLevel: "all", strict: false },
-    );
+    const result = compileCss(`.a { overflow: scroll; }`, "all");
     expect(result.warnings.getWarnings().some(w => w.code === "partial-mapping")).toBe(true);
   });
 
   test("position and cursor are silently ignored (no warnings)", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { position: absolute; cursor: pointer; }` }],
-      { name: "T", warnLevel: "all", strict: false },
-    );
+    const result = compileCss(`.a { position: absolute; cursor: pointer; }`, "all");
     expect(result.warnings.getWarnings().length).toBe(0);
   });
 
   test("strict mode with warnings fails compilation", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { box-shadow: 0 0 5px black; }` }],
-      { name: "T", warnLevel: "all", strict: true },
-    );
+    const result = compileCss(`.a { box-shadow: 0 0 5px black; }`, { warnLevel: "all", strict: true });
     expect(result.warnings.hasErrors()).toBe(true);
   });
 });

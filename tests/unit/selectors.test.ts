@@ -1,12 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
-
-function compileCss(css: string, warnLevel: "all" | "none" = "none") {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel, strict: false },
-  );
-}
+import { compileCss } from "../helpers.ts";
 
 describe("element mapping", () => {
   test("p -> TextLabel", () => {

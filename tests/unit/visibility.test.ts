@@ -1,12 +1,5 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
-
-function compileCss(css: string) {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel: "none", strict: false },
-  );
-}
+import { compileCss } from "../helpers.ts";
 
 describe("display", () => {
   test("display: none -> Visible = false", () => {

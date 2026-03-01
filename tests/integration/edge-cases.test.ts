@@ -1,18 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss, compileMulti } from "../helpers.ts";
 import { generateLuau } from "../../src/codegen/luau.ts";
 import { generateRBXMX } from "../../src/codegen/rbxmx.ts";
-
-function compileCss(css: string, opts?: { name?: string; strict?: boolean; warnLevel?: "all" | "none" }) {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    {
-      name: opts?.name ?? "Test",
-      warnLevel: opts?.warnLevel ?? "none",
-      strict: opts?.strict ?? false,
-    },
-  );
-}
 
 describe("rules with only pseudo-instances (no direct properties)", () => {
   test("border-radius-only rule produces UICorner rule", () => {
@@ -89,12 +78,12 @@ describe("empty CSS", () => {
 
 describe("multi-file compilation", () => {
   test("tokens from first file, rules from second", () => {
-    const result = compile(
+    const result = compileMulti(
       [
         { filename: "tokens.css", content: `:root { --bg: #fff; }` },
         { filename: "rules.css", content: `.card { background-color: var(--bg); }` },
       ],
-      { name: "Merged", warnLevel: "none", strict: false },
+      { name: "Merged" },
     );
     expect(result.ir.tokens.has("bg")).toBe(true);
     expect(result.ir.rules.length).toBe(1);
@@ -104,24 +93,22 @@ describe("multi-file compilation", () => {
   });
 
   test("rules from both files are ordered", () => {
-    const result = compile(
+    const result = compileMulti(
       [
         { filename: "a.css", content: `.first { color: white; }` },
         { filename: "b.css", content: `.second { color: black; }` },
       ],
-      { name: "M", warnLevel: "none", strict: false },
     );
     expect(result.ir.rules[0]!.selector).toBe(".first");
     expect(result.ir.rules[1]!.selector).toBe(".second");
   });
 
   test("duplicate tokens from later files override", () => {
-    const result = compile(
+    const result = compileMulti(
       [
         { filename: "a.css", content: `:root { --bg: #fff; }` },
         { filename: "b.css", content: `:root { --bg: #000; }` },
       ],
-      { name: "M", warnLevel: "none", strict: false },
     );
     // Later file should win
     const token = result.ir.tokens.get("bg")!;

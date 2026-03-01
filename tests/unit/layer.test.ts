@@ -1,13 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss } from "../helpers.ts";
 import { parseCSS } from "../../src/parser/css-parser.ts";
-
-function compileCss(css: string, warnLevel: "all" | "none" = "none") {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel, strict: false },
-  );
-}
 
 describe("@layer unwrapping", () => {
   test("rules inside @layer are extracted", () => {

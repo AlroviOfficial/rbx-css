@@ -1,13 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss } from "../helpers.ts";
 import { generateLuau } from "../../src/codegen/luau.ts";
-
-function compileCss(css: string, warnLevel: "all" | "none" = "none") {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel, strict: false },
-  );
-}
 
 describe("token type inference", () => {
   test("color token from hex", () => {

@@ -1,14 +1,7 @@
 import { describe, test, expect } from "bun:test";
-import { compile } from "../../src/compiler.ts";
+import { compileCss } from "../helpers.ts";
 import { generateLuau } from "../../src/codegen/luau.ts";
 import { generateRBXMX } from "../../src/codegen/rbxmx.ts";
-
-function compileCss(css: string) {
-  return compile(
-    [{ filename: "test.css", content: css }],
-    { name: "Test", warnLevel: "none", strict: false },
-  );
-}
 
 describe("Luau codegen", () => {
   test("single-property rule uses SetProperty", () => {
@@ -47,10 +40,7 @@ describe("Luau codegen", () => {
   });
 
   test("stylesheet name is set", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { color: white; }` }],
-      { name: "MySheet", warnLevel: "none", strict: false },
-    );
+    const result = compileCss(`.a { color: white; }`, { name: "MySheet" });
     const luau = generateLuau(result.ir, { minify: false });
     expect(luau).toContain('sheet.Name = "MySheet"');
   });
@@ -113,10 +103,7 @@ describe("RBXMX codegen", () => {
   });
 
   test("stylesheet name appears in RBXMX", () => {
-    const result = compile(
-      [{ filename: "test.css", content: `.a { color: white; }` }],
-      { name: "MySheet", warnLevel: "none", strict: false },
-    );
+    const result = compileCss(`.a { color: white; }`, { name: "MySheet" });
     const rbxmx = generateRBXMX(result.ir);
     expect(rbxmx).toContain('<string name="Name">MySheet</string>');
   });
