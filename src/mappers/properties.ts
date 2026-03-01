@@ -9,6 +9,127 @@ import {
 } from "./units.ts";
 import { mapFontFamily, mapFontWeight, mapFontStyle } from "./fonts.ts";
 
+// CSS properties with no Roblox equivalent — silently skipped without warnings.
+// Covers browser resets, Tailwind preflight, animations, transitions, etc.
+const IGNORED_CSS_PROPERTIES = new Set([
+  "box-sizing",
+  "text-decoration",
+  "text-decoration-line",
+  "text-decoration-style",
+  "text-decoration-color",
+  "text-decoration-thickness",
+  "text-size-adjust",
+  "tab-size",
+  "text-indent",
+  "text-transform",
+  "text-rendering",
+  "text-shadow",
+  "white-space",
+  "word-spacing",
+  "letter-spacing",
+  "list-style",
+  "list-style-type",
+  "list-style-position",
+  "list-style-image",
+  "resize",
+  "appearance",
+  "bottom",
+  "right",
+  "float",
+  "clear",
+  "content",
+  "counter-increment",
+  "counter-reset",
+  "quotes",
+  "border-collapse",
+  "border-spacing",
+  "table-layout",
+  "caption-side",
+  "empty-cells",
+  "border-top-width",
+  "border-right-width",
+  "border-bottom-width",
+  "border-left-width",
+  "border-top-style",
+  "border-right-style",
+  "border-bottom-style",
+  "border-left-style",
+  "border-top-color",
+  "border-right-color",
+  "border-bottom-color",
+  "border-left-color",
+  "border-image",
+  "border-image-source",
+  "border-image-slice",
+  "border-image-width",
+  "border-image-outset",
+  "border-image-repeat",
+  "outline-offset",
+  "background-position",
+  "background-position-x",
+  "background-position-y",
+  "background-repeat",
+  "background-size",
+  "background-origin",
+  "background-clip",
+  "background-attachment",
+  "transition",
+  "transition-property",
+  "transition-duration",
+  "transition-timing-function",
+  "transition-delay",
+  "transition-behavior",
+  "animation",
+  "animation-name",
+  "animation-duration",
+  "animation-timing-function",
+  "animation-delay",
+  "animation-iteration-count",
+  "animation-direction",
+  "animation-fill-mode",
+  "animation-play-state",
+  "pointer-events",
+  "user-select",
+  "touch-action",
+  "will-change",
+  "contain",
+  "isolation",
+  "mix-blend-mode",
+  "filter",
+  "backdrop-filter",
+  "clip-path",
+  "mask",
+  "mask-image",
+  "object-position",
+  "scroll-behavior",
+  "scroll-margin",
+  "scroll-padding",
+  "overscroll-behavior",
+  "hyphens",
+  "writing-mode",
+  "direction",
+  "unicode-bidi",
+  "columns",
+  "column-count",
+  "column-gap",
+  "column-rule",
+  "column-span",
+  "column-width",
+  "break-before",
+  "break-after",
+  "break-inside",
+  "page-break-before",
+  "page-break-after",
+  "page-break-inside",
+  "orphans",
+  "widows",
+  "accent-color",
+  "caret-color",
+  "color-scheme",
+  "forced-color-adjust",
+  "print-color-adjust",
+]);
+
 export interface PropertyMapResult {
   properties: Map<string, RobloxValue>;
   pseudoInstances: PseudoInstanceIR[];
@@ -90,6 +211,9 @@ function mapSingleDeclaration(
 ): void {
   const property = decl.property as string;
   const value = decl.value;
+
+  // CSS-only properties with no Roblox equivalent — silently skip
+  if (IGNORED_CSS_PROPERTIES.has(property)) return;
 
   // Handle unparsed declarations (contains var() references)
   if (property === "unparsed") {
@@ -978,21 +1102,21 @@ function handleUnparsed(
   unparsed: Record<string, unknown>,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  warnings: WarningCollector
+  _warnings: WarningCollector
 ): void {
   const propertyId = unparsed.propertyId as Record<string, unknown>;
   const propName = propertyId.property as string;
   const tokens = unparsed.value as unknown[];
 
+  // Skip properties that have no Roblox equivalent anyway
+  if (IGNORED_CSS_PROPERTIES.has(propName)) return;
+
   const varRef = extractVarReference(tokens);
   if (varRef) {
     mapTokenReference(propName, varRef, props, acc);
-  } else {
-    warnings.warn({
-      code: "unsupported-property",
-      message: `Could not resolve unparsed value for '${propName}'`,
-    });
   }
+  // Non-var() unparsed values (inherit, currentColor, etc.) are silently
+  // skipped — they typically come from browser resets and have no Roblox meaning
 }
 
 function extractVarReference(tokens: unknown[]): string | null {

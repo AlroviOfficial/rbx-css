@@ -73,14 +73,16 @@ describe("warning integration with compiler", () => {
     expect(msgs.some(m => m.includes("box-shadow") || m.includes("no Roblox"))).toBe(true);
   });
 
-  test("unsupported property: text-decoration", () => {
+  test("silently ignored property: text-decoration", () => {
     const result = compileCss(`.a { text-decoration: underline; }`, "all");
-    expect(result.warnings.getWarnings().length).toBeGreaterThan(0);
+    // text-decoration has no Roblox equivalent, silently skipped
+    expect(result.warnings.getWarnings().length).toBe(0);
   });
 
-  test("unsupported property: transition", () => {
+  test("silently ignored property: transition", () => {
     const result = compileCss(`.a { transition: all 0.3s ease; }`, "all");
-    expect(result.warnings.getWarnings().length).toBeGreaterThan(0);
+    // transitions have no Roblox equivalent, silently skipped
+    expect(result.warnings.getWarnings().length).toBe(0);
   });
 
   test("overflow: scroll emits partial-mapping warning", () => {

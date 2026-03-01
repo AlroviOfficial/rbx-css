@@ -56,10 +56,11 @@ describe("pseudo-class mapping", () => {
     expect(result.ir.rules[0]!.selector).toBe(".a:NonDefault");
   });
 
-  test("unsupported pseudo-class emits warning", () => {
+  test("known browser pseudo-class is silently dropped", () => {
     const result = compileCss(`.a:first-child { color: white; }`, "all");
-    const warnings = result.warnings.getWarnings();
-    expect(warnings.some(w => w.message.includes("first-child"))).toBe(true);
+    // :first-child has no Roblox equivalent, rule is silently dropped
+    expect(result.ir.rules.length).toBe(0);
+    expect(result.warnings.getWarnings().length).toBe(0);
   });
 });
 
@@ -74,10 +75,11 @@ describe("combinator edge cases", () => {
     expect(result.ir.rules[0]!.selector).toBe(".a > .b .c");
   });
 
-  test("universal selector * warns and is skipped", () => {
+  test("universal selector * is silently skipped", () => {
     const result = compileCss(`* { color: white; }`, "all");
     expect(result.ir.rules.length).toBe(0);
-    expect(result.warnings.getWarnings().some(w => w.message.includes("Universal"))).toBe(true);
+    // No warning — universal selector is expected noise from resets/preflights
+    expect(result.warnings.getWarnings().length).toBe(0);
   });
 });
 
