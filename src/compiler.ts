@@ -58,6 +58,13 @@ export function compile(
     return !isDataThemeSelector(rule.selectors as SelectorComponent[][]);
   });
 
+  // Alignment properties that only make sense on text-capable instances.
+  // Unlike color/font (which can cascade to descendant text), alignment
+  // properties are non-inheritable and invalid on non-text classes like
+  // ImageLabel, VideoFrame, ViewportFrame (e.g., from CSS vertical-align on img).
+  const NON_INHERITABLE_TEXT_PROPS = new Set(["TextXAlignment", "TextYAlignment"]);
+  const TEXT_CAPABLE_CLASSES = new Set(["TextLabel", "TextButton", "TextBox"]);
+
   // 5. Map remaining rules to IR
   const irRules: StyleRuleIR[] = [];
   const overflowScrollClasses = new Map<string, boolean>();
@@ -79,6 +86,17 @@ export function compile(
         rule.declarations,
         warnings
       );
+
+      // Filter out text-only properties when selector targets a non-text element type
+      // e.g., ImageLabel from <img> shouldn't get TextYAlignment from vertical-align
+      if (
+        /^[A-Z]\w+$/.test(mappedSelector) &&
+        !TEXT_CAPABLE_CLASSES.has(mappedSelector)
+      ) {
+        for (const prop of NON_INHERITABLE_TEXT_PROPS) {
+          properties.delete(prop);
+        }
+      }
 
       // Track overflow:scroll per class selector for the manifest
       const classMatches = mappedSelector.match(/\.([a-zA-Z0-9_-]+)/g);
