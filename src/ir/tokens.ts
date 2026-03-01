@@ -20,6 +20,7 @@ export function extractTokens(
           const name = (val.name as string).replace(/^--/, "");
           const tokenValue = inferTokenValue(
             val.value as unknown[],
+            name,
             warnings,
           );
           if (tokenValue) {
@@ -45,7 +46,8 @@ function isRootSelector(selectors: unknown[][]): boolean {
 
 function inferTokenValue(
   tokens: unknown[],
-  warnings: WarningCollector,
+  _varName: string,
+  _warnings: WarningCollector,
 ): TokenValue | null {
   if (!tokens || tokens.length === 0) return null;
 
@@ -82,7 +84,6 @@ function inferTokenValue(
   if (first.type === "token") {
     const tok = first.value as Record<string, unknown>;
     if (tok.type === "string") {
-      // Could be font name
       return { type: "string", value: tok.value as string };
     }
     if (tok.type === "number") {
@@ -105,9 +106,8 @@ function inferTokenValue(
     return { type: "string", value: first };
   }
 
-  warnings.warn({
-    code: "type-inference-ambiguous",
-    message: "Cannot determine type for token value",
-  });
+  // Multi-token values (e.g. Tailwind's --tw-shadow: 0 0 #0000) and other
+  // complex values that can't be mapped to a single Roblox type — silently
+  // skip since these are typically framework internals
   return null;
 }
