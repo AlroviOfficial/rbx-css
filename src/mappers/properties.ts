@@ -271,10 +271,14 @@ function mapSingleDeclaration(
 
     case "opacity": {
       const opacity = value as number;
-      props.set("BackgroundTransparency", {
-        type: "number",
-        value: 1 - opacity,
-      });
+      // opacity: 1 is the CSS default — skip it to avoid overwriting
+      // BackgroundTransparency set by background-color (e.g. transparent)
+      if (opacity !== 1) {
+        props.set("BackgroundTransparency", {
+          type: "number",
+          value: 1 - opacity,
+        });
+      }
       break;
     }
 
@@ -1143,6 +1147,8 @@ function mapTokenReference(
   switch (cssProperty) {
     case "background-color":
       props.set("BackgroundColor3", tokenRef);
+      // Token colors are assumed opaque — ensure background is visible
+      props.set("BackgroundTransparency", { type: "number", value: 0 });
       break;
     case "color":
       props.set("TextColor3", tokenRef);

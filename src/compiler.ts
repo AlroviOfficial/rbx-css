@@ -188,9 +188,10 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
     pseudoInstances: [],
   });
 
-  // TextButton: auto-size to text content (like <button>)
+  // TextButton: auto-size to text content, transparent background (like <button>)
   const textButtonProps = new Map<string, RobloxValue>();
   textButtonProps.set("AutomaticSize", autoSizeXY);
+  textButtonProps.set("BackgroundTransparency", transparentBg);
   irRules.unshift({
     selector: "TextButton",
     properties: textButtonProps,
@@ -203,6 +204,24 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   irRules.unshift({
     selector: "TextBox",
     properties: textBoxProps,
+    pseudoInstances: [],
+  });
+
+  // Frame: transparent background (like <div>)
+  const frameProps = new Map<string, RobloxValue>();
+  frameProps.set("BackgroundTransparency", transparentBg);
+  irRules.unshift({
+    selector: "Frame",
+    properties: frameProps,
+    pseudoInstances: [],
+  });
+
+  // ScrollingFrame: transparent background (like <div> with overflow:scroll)
+  const scrollingFrameProps = new Map<string, RobloxValue>();
+  scrollingFrameProps.set("BackgroundTransparency", transparentBg);
+  irRules.unshift({
+    selector: "ScrollingFrame",
+    properties: scrollingFrameProps,
     pseudoInstances: [],
   });
 }

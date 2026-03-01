@@ -123,6 +123,16 @@ interface SelectorComponent {
   value?: string;
 }
 
+/**
+ * Escape characters in a CSS identifier that have special meaning in selectors.
+ * lightningcss gives us unescaped names (e.g. "text-[22px]", "hover:bg-red",
+ * "gap-0.5"), but Roblox's selector parser interprets [, ], :, . etc. as syntax.
+ * Re-escape them with backslash so the selector matches the literal tag name.
+ */
+function escapeSelectorIdent(name: string): string {
+  return name.replace(/([^a-zA-Z0-9_-])/g, "\\$1");
+}
+
 export function mapSelector(
   components: SelectorComponent[],
   warnings: WarningCollector
@@ -132,11 +142,11 @@ export function mapSelector(
   for (const comp of components) {
     switch (comp.type) {
       case "class":
-        parts.push(`.${comp.name}`);
+        parts.push(`.${escapeSelectorIdent(comp.name!)}`);
         break;
 
       case "id":
-        parts.push(`#${comp.name}`);
+        parts.push(`#${escapeSelectorIdent(comp.name!)}`);
         break;
 
       case "type": {

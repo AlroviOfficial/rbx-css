@@ -122,10 +122,17 @@ describe("opacity", () => {
     );
   });
 
-  test("opacity: 1 -> BackgroundTransparency = 0", () => {
+  test("opacity: 1 is a no-op (CSS default)", () => {
     const result = compileCss(`.a { opacity: 1; }`);
+    // opacity: 1 is the CSS default — should not emit a rule
+    const classRule = result.ir.rules.find(r => r.selector === ".a");
+    expect(classRule).toBeUndefined();
+  });
+
+  test("opacity: 0.5 -> BackgroundTransparency = 0.5", () => {
+    const result = compileCss(`.a { opacity: 0.5; }`);
     expect(result.ir.rules[0]!.properties.get("BackgroundTransparency")).toEqual(
-      { type: "number", value: 0 },
+      { type: "number", value: 0.5 },
     );
   });
 });

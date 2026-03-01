@@ -65,9 +65,10 @@ describe("full spec example", () => {
     expect(luau).toContain('sheet:SetAttribute("radius", UDim.new(0, 8))');
     expect(luau).toContain('sheet:SetAttribute("gap", UDim.new(0, 12))');
 
-    // Frame rule (mapped from 'div')
+    // Frame rule (mapped from 'div') — token-ref bg-color also sets BackgroundTransparency = 0
     expect(luau).toContain('rule.Selector = "Frame"');
-    expect(luau).toContain('"BackgroundColor3", "$bg"');
+    expect(luau).toContain('BackgroundColor3 = "$bg"');
+    expect(luau).toContain("BackgroundTransparency = 0");
 
     // .card::UICorner with token reference
     expect(luau).toContain('rule.Selector = ".card::UICorner"');
