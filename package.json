@@ -2,13 +2,16 @@
   "name": "rbx-css",
   "version": "0.1.0",
   "description": "CSS to Roblox StyleSheet compiler",
-  "main": "./dist/index.js",
+  "main": "./dist/lib.js",
   "type": "module",
+  "exports": {
+    ".": "./dist/lib.js"
+  },
   "bin": {
     "rbx-css": "./dist/index.js"
   },
   "scripts": {
-    "build": "bun build src/index.ts --outdir dist --target node --external lightningcss",
+    "build": "bun build src/index.ts src/lib.ts --outdir dist --target node --external lightningcss",
     "test": "bun test",
     "dev": "bun run src/index.ts"
   },
