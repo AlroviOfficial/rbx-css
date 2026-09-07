@@ -207,11 +207,36 @@ export function mapDeclarations(
   }
 
   const pseudoInstances = finalizeAccumulator(acc, props, warnings);
+  constrainWrappedText(props);
   return {
     properties: props,
     pseudoInstances,
     overflowScroll: acc.overflowScroll ?? false,
   };
+}
+
+/**
+ * Stop a wrapping text element from growing along the axis it wraps in.
+ *
+ * Text wraps inside a box whose width its container decides, so a rule that
+ * asks for wrapping without giving a width must not also auto-size on X — the
+ * label would just grow to fit one line and never wrap. The width may still
+ * arrive from a layout (flex-grow) or another rule, which is exactly the case
+ * this covers.
+ */
+function constrainWrappedText(props: Map<string, RobloxValue>): void {
+  const wrapped = props.get("TextWrapped");
+  if (wrapped?.type !== "boolean" || !wrapped.value) return;
+  if (props.has("Size")) return;
+
+  const auto = props.get("AutomaticSize");
+  const value = auto?.type === "Enum" ? auto.value : "XY";
+  if (value !== "XY" && value !== "X") return;
+  props.set("AutomaticSize", {
+    type: "Enum",
+    enum: "AutomaticSize",
+    value: value === "XY" ? "Y" : "None",
+  });
 }
 
 function mapSingleDeclaration(
