@@ -159,6 +159,8 @@ interface Accumulator {
   paddingRight?: RobloxValue;
   borderWidth?: number;
   borderColor?: [number, number, number];
+  /** A token reference, which outranks borderColor when both are present. */
+  borderColorToken?: RobloxValue;
   borderTransparency?: number;
   borderStyle?: string;
   borderRadius?: RobloxValue;
@@ -1221,11 +1223,60 @@ function handleUnparsed(
   if (IGNORED_CSS_PROPERTIES.has(propName)) return;
 
   const varRef = extractVarReference(tokens);
-  if (varRef) {
-    mapTokenReference(propName, varRef, props, acc, warnings, sheetTokens);
+  if (!varRef) {
+    // Non-var() unparsed values (inherit, currentColor, etc.) are silently
+    // skipped — they typically come from browser resets and have no Roblox
+    // meaning.
+    return;
   }
-  // Non-var() unparsed values (inherit, currentColor, etc.) are silently
-  // skipped — they typically come from browser resets and have no Roblox meaning
+
+  // A border shorthand carries its width alongside the reference, and only the
+  // whole token list has it. Everything else is a single value.
+  if (BORDER_SHORTHANDS.has(propName)) {
+    handleUnparsedBorder(tokens, varRef, acc);
+    return;
+  }
+
+  mapTokenReference(propName, varRef, props, acc, warnings, sheetTokens);
+}
+
+const BORDER_SHORTHANDS = new Set([
+  "border",
+  "border-top",
+  "border-right",
+  "border-bottom",
+  "border-left",
+]);
+
+/**
+ * Map a border shorthand whose colour is a token reference.
+ *
+ * lightningcss cannot parse such a declaration, so it arrives as a raw token
+ * list; without this the whole border is dropped and the element renders with
+ * no stroke at all.
+ */
+function handleUnparsedBorder(
+  tokens: unknown[],
+  varRef: string,
+  acc: Accumulator
+): void {
+  acc.borderColorToken = { type: "token", name: varRef };
+
+  for (const tok of tokens) {
+    const t = tok as Record<string, unknown>;
+    if (t.type === "length") {
+      const len = t.value as Record<string, unknown>;
+      if (len.unit === "px") acc.borderWidth = len.value as number;
+      continue;
+    }
+    if (t.type !== "token") continue;
+    const inner = t.value as Record<string, unknown>;
+    if (inner.type === "ident") acc.borderStyle = inner.value as string;
+  }
+
+  // `border: <color>` alone is a 3px border in CSS terms, but Roblox needs a
+  // thickness before it draws anything.
+  if (acc.borderWidth === undefined) acc.borderWidth = 1;
 }
 
 function extractVarReference(tokens: unknown[]): string | null {
@@ -1286,7 +1337,7 @@ function mapTokenReference(
       acc.borderRadius = tokenRef;
       break;
     case "border-color":
-      // Can't split token into individual components
+      acc.borderColorToken = tokenRef;
       break;
     case "padding":
       acc.paddingTop = tokenRef;
@@ -1832,7 +1883,9 @@ function finalizeAccumulator(
       type: "number",
       value: acc.borderWidth,
     });
-    if (acc.borderColor) {
+    if (acc.borderColorToken) {
+      strokeProps.set("Color", acc.borderColorToken);
+    } else if (acc.borderColor) {
       strokeProps.set("Color", {
         type: "Color3",
         value: acc.borderColor,
