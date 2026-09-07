@@ -1,4 +1,8 @@
-import type { RobloxValue, PseudoInstanceIR } from "../ir/types.ts";
+import type {
+  RobloxValue,
+  PseudoInstanceIR,
+  TokenValue,
+} from "../ir/types.ts";
 import type { WarningCollector } from "../warnings.ts";
 import { convertCssColor, parseNamedColor } from "./colors.ts";
 import {
@@ -186,13 +190,20 @@ interface Accumulator {
 
 export function mapDeclarations(
   declarations: unknown[],
-  warnings: WarningCollector
+  warnings: WarningCollector,
+  tokens?: Map<string, TokenValue>
 ): PropertyMapResult {
   const props = new Map<string, RobloxValue>();
   const acc: Accumulator = { hasFlex: false, hasGrid: false };
 
   for (const decl of declarations) {
-    mapSingleDeclaration(decl as Record<string, unknown>, props, acc, warnings);
+    mapSingleDeclaration(
+      decl as Record<string, unknown>,
+      props,
+      acc,
+      warnings,
+      tokens
+    );
   }
 
   const pseudoInstances = finalizeAccumulator(acc, props, warnings);
@@ -207,7 +218,8 @@ function mapSingleDeclaration(
   decl: Record<string, unknown>,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  warnings: WarningCollector
+  warnings: WarningCollector,
+  tokens?: Map<string, TokenValue>
 ): void {
   const property = decl.property as string;
   const value = decl.value;
@@ -217,7 +229,13 @@ function mapSingleDeclaration(
 
   // Handle unparsed declarations (contains var() references)
   if (property === "unparsed") {
-    handleUnparsed(value as Record<string, unknown>, props, acc, warnings);
+    handleUnparsed(
+      value as Record<string, unknown>,
+      props,
+      acc,
+      warnings,
+      tokens
+    );
     return;
   }
 
@@ -1106,7 +1124,8 @@ function handleUnparsed(
   unparsed: Record<string, unknown>,
   props: Map<string, RobloxValue>,
   acc: Accumulator,
-  _warnings: WarningCollector
+  warnings: WarningCollector,
+  sheetTokens?: Map<string, TokenValue>
 ): void {
   const propertyId = unparsed.propertyId as Record<string, unknown>;
   const propName = propertyId.property as string;
@@ -1117,7 +1136,7 @@ function handleUnparsed(
 
   const varRef = extractVarReference(tokens);
   if (varRef) {
-    mapTokenReference(propName, varRef, props, acc);
+    mapTokenReference(propName, varRef, props, acc, warnings, sheetTokens);
   }
   // Non-var() unparsed values (inherit, currentColor, etc.) are silently
   // skipped — they typically come from browser resets and have no Roblox meaning
@@ -1136,11 +1155,35 @@ function extractVarReference(tokens: unknown[]): string | null {
   return null;
 }
 
+/**
+ * Resolve a length token to its scale/offset pair.
+ *
+ * Needed wherever a token has to become one component of a composite value:
+ * the reference form only resolves as a whole property value, so a composite
+ * built from a `$token` string fails to cast and the property is dropped.
+ */
+function resolveLengthToken(
+  tokenName: string,
+  sheetTokens?: Map<string, TokenValue>
+): UDimResult | null {
+  const token = sheetTokens?.get(tokenName);
+  if (!token) return null;
+  if (token.type === "UDim") {
+    return { scale: token.value[0], offset: token.value[1] };
+  }
+  if (token.type === "number") {
+    return { scale: 0, offset: token.value };
+  }
+  return null;
+}
+
 function mapTokenReference(
   cssProperty: string,
   tokenName: string,
   props: Map<string, RobloxValue>,
-  acc: Accumulator
+  acc: Accumulator,
+  warnings: WarningCollector,
+  sheetTokens?: Map<string, TokenValue>
 ): void {
   const tokenRef: RobloxValue = { type: "token", name: tokenName };
 
@@ -1181,12 +1224,26 @@ function mapTokenReference(
       acc.gap = tokenRef;
       break;
     case "width":
-      acc.widthX = { scale: 0, offset: 0 }; // placeholder, token overrides in rule
-      props.set("Size", tokenRef); // special case
+    case "height": {
+      // Size is one UDim2 built from both axes, so the token cannot be left as
+      // a reference: it is resolved here and folded into the composite. The
+      // earlier behaviour assigned the reference straight to Size, which casts
+      // a UDim to a UDim2 at runtime and leaves the element with no size.
+      const resolved = resolveLengthToken(tokenName, sheetTokens);
+      if (!resolved) {
+        warnings.warn({
+          code: "type-inference-ambiguous",
+          message:
+            `'${cssProperty}: var(--${tokenName})' needs a length token to ` +
+            `fold into Size; '--${tokenName}' is not one, so the ` +
+            `${cssProperty} was dropped`,
+        });
+        break;
+      }
+      if (cssProperty === "width") acc.widthX = resolved;
+      else acc.heightY = resolved;
       break;
-    case "height":
-      acc.heightY = { scale: 0, offset: 0 };
-      break;
+    }
     case "font-size":
       props.set("TextSize", tokenRef);
       break;
@@ -1626,6 +1683,17 @@ function finalizeAccumulator(
         type: "UDim2",
         value: [x.scale, x.offset, y.scale, y.offset],
       });
+      // An explicit width and height wins over content sizing, as it does in
+      // CSS. The element-type base rules give text and button instances
+      // AutomaticSize so they behave like their HTML counterparts, and that
+      // would otherwise keep overriding the size this rule just set.
+      if (acc.widthX !== undefined && acc.heightY !== undefined) {
+        props.set("AutomaticSize", {
+          type: "Enum",
+          enum: "AutomaticSize",
+          value: "None",
+        });
+      }
     }
   }
 
@@ -1709,6 +1777,14 @@ function finalizeAccumulator(
     acc.gap !== undefined;
   if (acc.hasFlex || hasFlexProperties) {
     const layoutProps = new Map<string, RobloxValue>();
+    // A flex container lays its children out in source order. Roblox defaults a
+    // UIListLayout to sorting by Name, which reorders the markup alphabetically,
+    // so the layout has to be told to use LayoutOrder instead.
+    layoutProps.set("SortOrder", {
+      type: "Enum",
+      enum: "SortOrder",
+      value: "LayoutOrder",
+    });
     if (acc.hasFlex || acc.flexDirection) {
       layoutProps.set(
         "FillDirection",
@@ -1860,6 +1936,11 @@ function finalizeAccumulator(
         value: acc.gridMaxCellsPerRow,
       });
     }
+    gridProps.set("SortOrder", {
+      type: "Enum",
+      enum: "SortOrder",
+      value: "LayoutOrder",
+    });
     pseudos.push({ type: "UIGridLayout", properties: gridProps });
   }
 

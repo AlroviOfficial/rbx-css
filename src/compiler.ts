@@ -1,5 +1,6 @@
 import { parseCSS } from "./parser/css-parser.ts";
 import { extractTokens } from "./ir/tokens.ts";
+import { reconcileTokenTypes } from "./ir/token-usage.ts";
 import { extractThemes } from "./ir/themes.ts";
 import { mapSelector } from "./mappers/selector.ts";
 import { mapDeclarations } from "./mappers/properties.ts";
@@ -19,6 +20,7 @@ export interface CompileResult {
   ir: StyleSheetIR;
   warnings: WarningCollector;
   overflowScrollClasses: Map<string, boolean>;
+  explicitOrderClasses: Map<string, boolean>;
 }
 
 export function compile(
@@ -68,6 +70,7 @@ export function compile(
   // 5. Map remaining rules to IR
   const irRules: StyleRuleIR[] = [];
   const overflowScrollClasses = new Map<string, boolean>();
+  const explicitOrderClasses = new Map<string, boolean>();
 
   for (const rule of styleRules) {
     for (const selectorComponents of rule.selectors) {
@@ -84,7 +87,8 @@ export function compile(
 
       const { properties, pseudoInstances, overflowScroll } = mapDeclarations(
         rule.declarations,
-        warnings
+        warnings,
+        tokens
       );
 
       // Filter out text-only properties when selector targets a non-text element type
@@ -98,7 +102,12 @@ export function compile(
         }
       }
 
-      // Track overflow:scroll per class selector for the manifest
+      // Track overflow:scroll and an explicit `order` per class selector for
+      // the manifest. A consumer emitting its own LayoutOrder has to know when
+      // the stylesheet already sets one: a property assigned on the instance
+      // takes priority over a style rule, so emitting both would silently win
+      // over the author's `order`.
+      const hasExplicitOrder = properties.has("LayoutOrder");
       const classMatches = mappedSelector.match(/\.([a-zA-Z0-9_-]+)/g);
       if (classMatches) {
         for (const match of classMatches) {
@@ -107,6 +116,11 @@ export function compile(
             overflowScrollClasses.set(className, true);
           } else if (!overflowScrollClasses.has(className)) {
             overflowScrollClasses.set(className, false);
+          }
+          if (hasExplicitOrder) {
+            explicitOrderClasses.set(className, true);
+          } else if (!explicitOrderClasses.has(className)) {
+            explicitOrderClasses.set(className, false);
           }
         }
       }
@@ -162,7 +176,10 @@ export function compile(
     themes: themeMap.size > 0 ? themeMap : undefined,
   };
 
-  return { ir, warnings, overflowScrollClasses };
+  // 7. Re-type tokens now that every reference to them is known.
+  reconcileTokenTypes(ir, warnings);
+
+  return { ir, warnings, overflowScrollClasses, explicitOrderClasses };
 }
 
 /**
@@ -206,6 +223,15 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
     properties: textBoxProps,
     pseudoInstances: [],
   });
+
+  // ImageLabel / ImageButton: transparent background (like <img>). Without
+  // this an image is drawn on Roblox's default opaque grey plate, which has no
+  // counterpart in the browser.
+  for (const selector of ["ImageLabel", "ImageButton"]) {
+    const imageProps = new Map<string, RobloxValue>();
+    imageProps.set("BackgroundTransparency", transparentBg);
+    irRules.unshift({ selector, properties: imageProps, pseudoInstances: [] });
+  }
 
   // Frame: transparent background (like <div>)
   const frameProps = new Map<string, RobloxValue>();

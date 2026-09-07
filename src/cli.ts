@@ -122,7 +122,10 @@ function handleCompile(
 
   // Emit manifest alongside output
   if (opts.manifest && opts.output) {
-    const manifest = generateManifest(result.overflowScrollClasses);
+    const manifest = generateManifest(
+      result.overflowScrollClasses,
+      result.explicitOrderClasses
+    );
     const manifestPath = opts.output.replace(
       /\.(luau|rbxmx)$/,
       ".manifest.json"

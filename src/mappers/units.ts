@@ -47,11 +47,83 @@ export function convertLengthDimension(
   }
 
   if (d.type === "calc") {
+    const result = convertCalc(d.value);
+    if (result) return result;
     warnings.warn({
       code: "unsupported-unit",
-      message: "calc() expressions are not supported - skipped",
+      message:
+        "only calc() of percentages and absolute lengths maps to a UDim - skipped",
     });
     return null;
+  }
+
+  return null;
+}
+
+/**
+ * Reduce a calc() to a scale/offset pair.
+ *
+ * A Roblox UDim is precisely a percentage plus a pixel offset, so the mixed
+ * form CSS can only express through calc() — `calc(100% - 142px)` — is the one
+ * that maps exactly. Anything needing real arithmetic (multiplication, nested
+ * units, var() operands) has no UDim equivalent and is rejected.
+ */
+function convertCalc(node: unknown): UDimResult | null {
+  const expr = unwrapCalc(node);
+  if (!expr) return null;
+  return reduceCalc(expr, { scale: 0, offset: 0 });
+}
+
+function unwrapCalc(node: unknown): Record<string, unknown> | null {
+  let current = node as Record<string, unknown> | null;
+  // lightningcss nests the expression as function -> calc -> <expr>.
+  while (current && (current.type === "function" || current.type === "calc")) {
+    current = current.value as Record<string, unknown> | null;
+  }
+  return current;
+}
+
+function reduceCalc(
+  node: Record<string, unknown>,
+  total: UDimResult
+): UDimResult | null {
+  if (node.type === "sum") {
+    const terms = node.value as unknown[];
+    let acc: UDimResult | null = total;
+    for (const term of terms) {
+      acc = reduceCalc(term as Record<string, unknown>, acc);
+      if (!acc) return null;
+    }
+    return acc;
+  }
+
+  if (node.type === "value") {
+    const leaf = node.value as Record<string, unknown>;
+
+    if (leaf.type === "percentage") {
+      return {
+        scale: total.scale + (leaf.value as number),
+        offset: total.offset,
+      };
+    }
+
+    if (leaf.type === "dimension") {
+      const dim = leaf.value as Record<string, unknown>;
+      const unit = dim.unit as string;
+      const value = dim.value as number;
+      if (unit === "px") return { scale: total.scale, offset: total.offset + value };
+      if (unit === "rem" || unit === "em") {
+        return { scale: total.scale, offset: total.offset + value * 16 };
+      }
+      if (unit === "vw" || unit === "vh") {
+        return { scale: total.scale + value / 100, offset: total.offset };
+      }
+      return null;
+    }
+
+    if (leaf.type === "number") {
+      return { scale: total.scale, offset: total.offset + (leaf.value as number) };
+    }
   }
 
   return null;
