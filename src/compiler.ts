@@ -8,6 +8,7 @@ import { isDataThemeSelector } from "./mappers/selector.ts";
 import type { StyleSheetIR, StyleRuleIR, RobloxValue } from "./ir/types.ts";
 import { WarningCollector, type WarningLevel } from "./warnings.ts";
 import type { SelectorComponent } from "lightningcss";
+import { BASE_RULE_TAG } from "./base-rule-tag.ts";
 
 export interface CompileOptions {
   name: string;
@@ -185,7 +186,11 @@ export function compile(
 /**
  * Add base element rules that mimic browser defaults for Roblox instances.
  * In CSS, text elements auto-size to their content. In Roblox, this requires
- * explicit AutomaticSize. These use element-type selectors (lowest specificity).
+ * explicit AutomaticSize.
+ *
+ * Each is scoped to BASE_RULE_TAG so it reaches only the elements the renderer
+ * created; see that constant for why. A class rule still wins over one of
+ * these, so authored styles are unaffected.
  */
 function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   const autoSizeXY: RobloxValue = {
@@ -202,7 +207,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   textLabelProps.set("BackgroundTransparency", transparentBg);
   textLabelProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
-    selector: "TextLabel",
+    selector: `TextLabel.${BASE_RULE_TAG}`,
     properties: textLabelProps,
     pseudoInstances: [],
   });
@@ -213,7 +218,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   textButtonProps.set("BackgroundTransparency", transparentBg);
   textButtonProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
-    selector: "TextButton",
+    selector: `TextButton.${BASE_RULE_TAG}`,
     properties: textButtonProps,
     pseudoInstances: [],
   });
@@ -223,7 +228,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   textBoxProps.set("AutomaticSize", autoSizeXY);
   textBoxProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
-    selector: "TextBox",
+    selector: `TextBox.${BASE_RULE_TAG}`,
     properties: textBoxProps,
     pseudoInstances: [],
   });
@@ -235,7 +240,11 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
     const imageProps = new Map<string, RobloxValue>();
     imageProps.set("BackgroundTransparency", transparentBg);
     imageProps.set("BorderSizePixel", noBorder);
-    irRules.unshift({ selector, properties: imageProps, pseudoInstances: [] });
+    irRules.unshift({
+      selector: `${selector}.${BASE_RULE_TAG}`,
+      properties: imageProps,
+      pseudoInstances: [],
+    });
   }
 
   // Frame: transparent background (like <div>)
@@ -243,7 +252,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   frameProps.set("BackgroundTransparency", transparentBg);
   frameProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
-    selector: "Frame",
+    selector: `Frame.${BASE_RULE_TAG}`,
     properties: frameProps,
     pseudoInstances: [],
   });
@@ -253,7 +262,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   scrollingFrameProps.set("BackgroundTransparency", transparentBg);
   scrollingFrameProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
-    selector: "ScrollingFrame",
+    selector: `ScrollingFrame.${BASE_RULE_TAG}`,
     properties: scrollingFrameProps,
     pseudoInstances: [],
   });

@@ -1,4 +1,5 @@
 import { HTML_TO_ROBLOX } from "./mappings/elements.ts";
+import { BASE_RULE_TAG } from "./base-rule-tag.ts";
 
 export interface CSSManifest {
   classes: Record<
@@ -6,6 +7,8 @@ export interface CSSManifest {
     { overflowScroll: boolean; explicitOrder?: boolean }
   >;
   elementMap: Record<string, string>;
+  /** Tag the renderer must apply to every element it creates. */
+  elementTag: string;
 }
 
 export function generateManifest(
@@ -29,5 +32,5 @@ export function generateManifest(
 
   const elementMap: Record<string, string> = { ...HTML_TO_ROBLOX };
 
-  return { classes, elementMap };
+  return { classes, elementMap, elementTag: BASE_RULE_TAG };
 }
