@@ -571,21 +571,20 @@ function mapSingleDeclaration(
 
     case "overflow": {
       const v = value as Record<string, unknown>;
-      const x = v.x as string;
-      const y = v.y as string;
-      if (x === "hidden" || y === "hidden") {
-        props.set("ClipsDescendants", { type: "boolean", value: true });
-      }
-      if (x === "scroll" || y === "scroll") {
-        acc.overflowScroll = true;
-        warnings.warn({
-          code: "partial-mapping",
-          message:
-            "overflow: scroll detected — will trigger ScrollingFrame upgrade via manifest",
-        });
-      }
+      applyOverflow(v.x as string, v.y as string, props, acc, warnings);
       break;
     }
+
+    case "overflow-x": {
+      applyOverflow(value as string, undefined, props, acc, warnings);
+      break;
+    }
+
+    case "overflow-y": {
+      applyOverflow(undefined, value as string, props, acc, warnings);
+      break;
+    }
+
 
     case "visibility": {
       if (value === "hidden") {
@@ -1096,6 +1095,53 @@ function handleOutline(
   acc.borderStyle = "outline";
 }
 
+/**
+ * Map one or both overflow axes.
+ *
+ * The axes arrive either together (the `overflow` shorthand) or one at a time,
+ * so a scrollable axis is unioned with whatever an earlier declaration set
+ * rather than replacing it.
+ */
+function applyOverflow(
+  x: string | undefined,
+  y: string | undefined,
+  props: Map<string, RobloxValue>,
+  acc: Accumulator,
+  warnings: WarningCollector
+): void {
+  if (x === "hidden" || y === "hidden") {
+    props.set("ClipsDescendants", { type: "boolean", value: true });
+  }
+
+  const scrollsX = x === "scroll" || x === "auto";
+  const scrollsY = y === "scroll" || y === "auto";
+  if (!scrollsX && !scrollsY) return;
+
+  acc.overflowScroll = true;
+
+  // A ScrollingFrame defaults to a canvas twice its own height and never grows
+  // it, so content past that is unreachable while shorter content scrolls into
+  // empty space. A browser derives the scrollable area from the content, which
+  // is what AutomaticCanvasSize does.
+  props.set("CanvasSize", { type: "UDim2", value: [0, 0, 0, 0] });
+
+  const existing = props.get("AutomaticCanvasSize");
+  const already = existing?.type === "Enum" ? existing.value : "";
+  const axisX = scrollsX || already === "X" || already === "XY";
+  const axisY = scrollsY || already === "Y" || already === "XY";
+  props.set("AutomaticCanvasSize", {
+    type: "Enum",
+    enum: "AutomaticSize",
+    value: axisX && axisY ? "XY" : axisX ? "X" : "Y",
+  });
+
+  warnings.warn({
+    code: "partial-mapping",
+    message:
+      "overflow: scroll detected — will trigger ScrollingFrame upgrade via manifest",
+  });
+}
+
 function handleCustomProperty(
   value: Record<string, unknown>,
   props: Map<string, RobloxValue>,
@@ -1112,6 +1158,21 @@ function handleCustomProperty(
       const tokenVal = tok.value as Record<string, unknown>;
       if (tokenVal.type === "ident") {
         handleObjectFit(tokenVal.value as string, props);
+      }
+    }
+    return;
+  }
+
+  // Roblox has no scrollbar that shows only while scrolling, so `auto` keeps
+  // the platform's own thickness.
+  if (name === "scrollbar-width" && tokens?.[0]) {
+    const tok = tokens[0] as Record<string, unknown>;
+    const tokenVal = tok.value as Record<string, unknown> | undefined;
+    if (tok.type === "token" && tokenVal?.type === "ident") {
+      const thickness: Record<string, number> = { none: 0, thin: 6, auto: 12 };
+      const width = thickness[tokenVal.value as string];
+      if (width !== undefined) {
+        props.set("ScrollBarThickness", { type: "number", value: width });
       }
     }
     return;

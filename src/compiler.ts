@@ -194,11 +194,13 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
     value: "XY",
   };
   const transparentBg: RobloxValue = { type: "number", value: 1 };
+  const noBorder: RobloxValue = { type: "number", value: 0 };
 
   // TextLabel: auto-size to text content, transparent background (like <span>)
   const textLabelProps = new Map<string, RobloxValue>();
   textLabelProps.set("AutomaticSize", autoSizeXY);
   textLabelProps.set("BackgroundTransparency", transparentBg);
+  textLabelProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
     selector: "TextLabel",
     properties: textLabelProps,
@@ -209,6 +211,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   const textButtonProps = new Map<string, RobloxValue>();
   textButtonProps.set("AutomaticSize", autoSizeXY);
   textButtonProps.set("BackgroundTransparency", transparentBg);
+  textButtonProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
     selector: "TextButton",
     properties: textButtonProps,
@@ -218,6 +221,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   // TextBox: auto-size to text content (like <input>)
   const textBoxProps = new Map<string, RobloxValue>();
   textBoxProps.set("AutomaticSize", autoSizeXY);
+  textBoxProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
     selector: "TextBox",
     properties: textBoxProps,
@@ -230,12 +234,14 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   for (const selector of ["ImageLabel", "ImageButton"]) {
     const imageProps = new Map<string, RobloxValue>();
     imageProps.set("BackgroundTransparency", transparentBg);
+    imageProps.set("BorderSizePixel", noBorder);
     irRules.unshift({ selector, properties: imageProps, pseudoInstances: [] });
   }
 
   // Frame: transparent background (like <div>)
   const frameProps = new Map<string, RobloxValue>();
   frameProps.set("BackgroundTransparency", transparentBg);
+  frameProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
     selector: "Frame",
     properties: frameProps,
@@ -245,6 +251,7 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
   // ScrollingFrame: transparent background (like <div> with overflow:scroll)
   const scrollingFrameProps = new Map<string, RobloxValue>();
   scrollingFrameProps.set("BackgroundTransparency", transparentBg);
+  scrollingFrameProps.set("BorderSizePixel", noBorder);
   irRules.unshift({
     selector: "ScrollingFrame",
     properties: scrollingFrameProps,
