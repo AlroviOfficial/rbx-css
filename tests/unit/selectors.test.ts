@@ -81,6 +81,22 @@ describe("combinator edge cases", () => {
     // No warning — universal selector is expected noise from resets/preflights
     expect(result.warnings.getWarnings().length).toBe(0);
   });
+
+  test("descendant combinator warns that Roblox will not match it", () => {
+    const result = compileCss(`.a .b { color: white; }`, "all");
+    expect(result.ir.rules[0]!.selector).toBe(".a .b");
+    const warning = result.warnings
+      .getWarnings()
+      .find((w) => w.code === "unsupported-selector");
+    expect(warning).toBeDefined();
+    expect(warning!.message).toContain("Descendant combinator");
+  });
+
+  test("child combinator does not warn", () => {
+    const result = compileCss(`.a > .b { color: white; }`, "all");
+    expect(result.ir.rules[0]!.selector).toBe(".a > .b");
+    expect(result.warnings.getWarnings().length).toBe(0);
+  });
 });
 
 describe("compound selectors", () => {

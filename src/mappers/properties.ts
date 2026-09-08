@@ -1830,6 +1830,16 @@ function finalizeAccumulator(
           enum: "AutomaticSize",
           value: "None",
         });
+      } else {
+        // Roblox carries both axes in one UDim2, so a rule naming only one of
+        // them still writes the other, resetting it to zero. CSS would have
+        // left it to the cascade.
+        const missing = acc.widthX === undefined ? "height" : "width";
+        const given = missing === "height" ? "width" : "height";
+        warnings.warn({
+          code: "partial-mapping",
+          message: `'${given}' without '${missing}' sets Size on both axes, so ${missing} becomes 0; state both to keep it`,
+        });
       }
     }
   }

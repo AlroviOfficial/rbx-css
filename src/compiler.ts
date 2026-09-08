@@ -281,6 +281,16 @@ function generateBaseElementRules(irRules: StyleRuleIR[]): void {
  * Compound selectors have higher CSS specificity, so they naturally win.
  */
 function generateSizeCompoundRules(irRules: StyleRuleIR[]): void {
+  // Only utility classes get paired. A rule that also carries colour, text or
+  // layout describes one component, and pairing those produces a rule for every
+  // combination of classes that never share an element.
+  const isSizeUtility = (rule: StyleRuleIR): boolean => {
+    for (const key of rule.properties.keys()) {
+      if (key !== "Size" && key !== "AutomaticSize") return false;
+    }
+    return true;
+  };
+
   // Collect rules that set Size with only one meaningful axis
   type SizeAxis = {
     selector: string;
@@ -297,6 +307,7 @@ function generateSizeCompoundRules(irRules: StyleRuleIR[]): void {
       !rule.selector.match(/^\.[a-zA-Z0-9_-]+\[/)
     )
       continue;
+    if (!isSizeUtility(rule)) continue;
 
     const sizeVal = rule.properties.get("Size");
     const autoVal = rule.properties.get("AutomaticSize");
@@ -326,6 +337,7 @@ function generateSizeCompoundRules(irRules: StyleRuleIR[]): void {
   // Also collect auto-only rules (w-auto, h-auto) that don't set Size but set AutomaticSize
   for (const rule of irRules) {
     if (!rule.selector.match(/^\.[a-zA-Z0-9_-]+$/)) continue;
+    if (!isSizeUtility(rule)) continue;
     const autoVal = rule.properties.get("AutomaticSize");
     const sizeVal = rule.properties.get("Size");
     if (!autoVal || autoVal.type !== "Enum" || sizeVal) continue;

@@ -192,7 +192,14 @@ export function mapSelector(
         if (comp.value === "child") {
           parts.push(" > ");
         } else if (comp.value === "descendant") {
+          // Roblox's matcher resolves '>' but never a bare descendant, so the
+          // rule compiles cleanly and then silently never applies to anything.
           parts.push(" ");
+          warnings.warn({
+            code: "unsupported-selector",
+            message:
+              "Descendant combinator (space) never matches in Roblox; write '>' between every level to target a direct child",
+          });
         } else {
           warnings.warn({
             code: "unsupported-selector",

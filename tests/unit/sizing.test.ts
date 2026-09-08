@@ -67,6 +67,64 @@ describe("auto sizing edge cases", () => {
     const auto = result.ir.rules[0]!.properties.get("AutomaticSize");
     expect(auto).toEqual({ type: "Enum", enum: "AutomaticSize", value: "X" });
   });
+
+  test("width without height warns that the other axis is zeroed", () => {
+    const result = compileCss(`.a { width: 100%; }`, "all");
+    const size = result.ir.rules[0]!.properties.get("Size");
+    expect(size).toEqual({ type: "UDim2", value: [1, 0, 0, 0] });
+    const warning = result.warnings
+      .getWarnings()
+      .find((w) => w.code === "partial-mapping");
+    expect(warning).toBeDefined();
+    expect(warning!.message).toContain("height");
+  });
+
+  test("height without width warns that the other axis is zeroed", () => {
+    const result = compileCss(`.a { height: 30px; }`, "all");
+    const warning = result.warnings
+      .getWarnings()
+      .find((w) => w.code === "partial-mapping");
+    expect(warning).toBeDefined();
+    expect(warning!.message).toContain("width");
+  });
+
+  test("both axes given produces no partial-mapping warning", () => {
+    const result = compileCss(`.a { width: 100%; height: 30px; }`, "all");
+    expect(
+      result.warnings.getWarnings().some((w) => w.code === "partial-mapping")
+    ).toBe(false);
+  });
+});
+
+describe("size compound rules", () => {
+  test("atomic width and height utilities are merged", () => {
+    const result = compileCss(`.w-full { width: 100%; } .h-full { height: 100%; }`);
+    const compound = result.ir.rules.find(
+      (r) => r.selector === ".w-full.h-full"
+    );
+    expect(compound).toBeDefined();
+    expect(compound!.properties.get("Size")).toEqual({
+      type: "UDim2",
+      value: [1, 0, 1, 0],
+    });
+  });
+
+  test("component rules carrying more than a size are not paired", () => {
+    const result = compileCss(`
+      .panel { width: 100%; background-color: red; }
+      .caption { height: 14px; color: white; }
+    `);
+    expect(
+      result.ir.rules.some((r) => r.selector.includes(".panel.caption"))
+    ).toBe(false);
+  });
+
+  test("an atomic rule is not paired with a component rule", () => {
+    const result = compileCss(`.w-full { width: 100%; } .caption { height: 14px; color: white; }`);
+    expect(
+      result.ir.rules.some((r) => r.selector === ".w-full.caption")
+    ).toBe(false);
+  });
 });
 
 describe("position", () => {

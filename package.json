@@ -1,6 +1,6 @@
 {
   "name": "rbx-css",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "CSS to Roblox StyleSheet compiler",
   "main": "./dist/lib.js",
   "type": "module",
